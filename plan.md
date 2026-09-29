@@ -10,7 +10,7 @@ Transformar a landing em um site de barbearia com páginas distintas e URLs pró
 - **Metadados:** título e descrição de página atualizados por rota no cliente; metadata geral inicial em `index.html`. Não inventar canonical ou sitemap com URL de produção não confirmada.
 - **Consentimento:** gravar `n13_cookie_consent` como cookie first-party com escolhas para necessário (sempre ativo) e analytics opcional. Nenhum script/serviço de rastreamento é instalado nesta demonstração; a preferência opcional é registrada sem ativar terceiros.
 - **Estado:** serviço pode ser pré-selecionado via query string `/agendar?servico=...`; os dados e horários são fictícios e o formulário gera um protocolo somente no cliente.
-- **Desenvolvimento:** Vite na porta 3000. **Publicação:** build Manus estático em `dist`; `pnpm build:github-pages` prepara o projeto sob `/navalha13-barbearia/` e grava `404.html` para entradas diretas no GitHub Pages.
+- **Desenvolvimento:** Vite na porta 3000. **Publicação:** build Manus estático em `dist`; `pnpm build:github-pages` prepara o projeto sob `/navalha13-barbearia/`, grava `404.html` e gera uma entrada HTML estática para cada rota no GitHub Pages.
 
 ## Organização
 - `index.html`: metadata inicial e mount React.
@@ -32,7 +32,7 @@ Transformar a landing em um site de barbearia com páginas distintas e URLs pró
 6. Aviso de cookies aparece antes de uma escolha salva; visitante aceita opcionais, rejeita opcionais ou personaliza. Uma página de privacidade explica a escolha e a ausência de rastreadores.
 
 ## Deployment e performance
-O conteúdo permanece uma aplicação pública estática, sem API, banco, login ou recurso de servidor. `pnpm build` gera `dist`; no Manus, `/assets/*` atende recursos versionados e `/*` usa o fallback estático já declarado. O build GitHub Pages usa base de projeto, fontes e imagens locais e uma cópia `404.html` do shell React para entrada em subrotas; a publicação continua dependendo de autorização de Pages.
+O conteúdo permanece uma aplicação pública estática, sem API, banco, login ou recurso de servidor. `pnpm build` gera `dist`; no Manus, `/assets/*` atende recursos versionados e `/*` usa o fallback estático já declarado. O build GitHub Pages usa a base `/navalha13-barbearia/`, fontes e imagens locais, uma pasta `index.html` por rota e `404.html` como fallback. A branch `gh-pages` é a origem configurada na raiz do site.
 
 ## SEO e acessibilidade
 - Metadata geral e conteúdo de fallback semântico permanecem em `index.html`; atualizar título/descrição ao navegar no cliente.
