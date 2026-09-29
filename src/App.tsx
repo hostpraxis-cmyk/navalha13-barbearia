@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { barbers, images, scheduleDays, services, slotsByDay, testimonials } from './data'
 
@@ -18,6 +18,45 @@ const initialBooking: BookingState = {
   time: '',
   name: '',
   whatsapp: '',
+}
+
+function useScrollReveal() {
+  useEffect(() => {
+    const root = document.documentElement
+    const targets = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'))
+    root.classList.add('reveal-ready')
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (prefersReducedMotion || !('IntersectionObserver' in window)) {
+      targets.forEach((target) => target.classList.add('is-visible'))
+      return () => root.classList.remove('reveal-ready')
+    }
+
+    const observer = new IntersectionObserver((entries, currentObserver) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible')
+          currentObserver.unobserve(entry.target)
+        }
+      })
+    }, { threshold: 0.12, rootMargin: '0px 0px -44px 0px' })
+
+    targets.forEach((target) => observer.observe(target))
+    return () => {
+      observer.disconnect()
+      root.classList.remove('reveal-ready')
+    }
+  }, [])
+}
+
+function BarberPole() {
+  return (
+    <div className="barber-pole" aria-hidden="true">
+      <span className="pole-cap" />
+      <span className="pole-glass"><i /></span>
+      <span className="pole-cap" />
+    </div>
+  )
 }
 
 function BrandMark() {
@@ -55,6 +94,7 @@ function StarIcon() {
 }
 
 export default function App() {
+  useScrollReveal()
   const [booking, setBooking] = useState<BookingState>(initialBooking)
   const [formMessage, setFormMessage] = useState('')
   const [confirmationCode, setConfirmationCode] = useState('')
@@ -155,12 +195,12 @@ export default function App() {
             <img src={images.hero} alt="Barbeiro refinando a barba de um cliente" className="hero-image" />
           </div>
           <div className="hero-content container">
-            <p className="eyebrow entrance">Barbearia · corte · presença</p>
+            <p className="eyebrow entrance">Barbearia clássica · corte · barba</p>
             <h1 id="hero-title" className="entrance delay-1">
-              Seu horário.<br />
-              <span>Seu ritual.</span>
+              Corte afiado.<br />
+              <span>Barba na régua.</span>
             </h1>
-            <p className="hero-copy entrance delay-2">Precisão de navalha, pausa de verdade e um visual que acompanha o seu ritmo.</p>
+            <p className="hero-copy entrance delay-2">Corte bem feito, barba na régua e aquele tempo de cadeira que faz diferença. Chega mais.</p>
             <div className="hero-actions entrance delay-3">
               <a className="button button-primary" href="#agendamento">Reservar meu horário <ArrowIcon /></a>
               <a className="button button-ghost" href="#servicos">Conhecer a casa</a>
@@ -174,20 +214,31 @@ export default function App() {
           <div className="hero-stamp" aria-label="Navalha 13 desde 2013">
             <span>desde</span><strong>2013</strong><span>ritual urbano</span>
           </div>
+          <div className="hero-pole-wrap"><BarberPole /><span>BARBEARIA<br />DESDE 2013</span></div>
           <a className="scroll-cue" href="#servicos" aria-label="Descer até os serviços"><span /> rolar</a>
         </section>
 
+        <div className="barber-ticker" aria-label="Corte clássico, barba na régua e navalha tradicional">
+          <div className="ticker-track" aria-hidden="true">
+            {[0, 1].map((copy) => (
+              <span className="ticker-group" key={copy}>
+                <b>CORTE CLÁSSICO</b><i>✦</i><b>BARBA NA RÉGUA</b><i>✦</i><b>NAVALHA TRADICIONAL</b><i>✦</i><b>CAFÉ PASSADO NA HORA</b><i>✦</i>
+              </span>
+            ))}
+          </div>
+        </div>
+
         <section className="services section container" id="servicos" aria-labelledby="services-title">
-          <div className="section-heading split-heading">
+          <div className="section-heading split-heading" data-reveal>
             <div>
-              <p className="eyebrow">01 — O seu tempo</p>
-              <h2 id="services-title">Ritual na<br /><em>medida certa.</em></h2>
+              <p className="eyebrow">01 — Serviços de barbearia</p>
+              <h2 id="services-title">Corte, barba e<br /><em>capricho.</em></h2>
             </div>
             <p>Do desenho da barba ao último toque do acabamento, cada serviço tem ritmo, técnica e espaço para você chegar no resultado certo.</p>
           </div>
           <div className="services-grid">
             {services.map((service) => (
-              <article className="service-card" key={service.id}>
+              <article className="service-card" key={service.id} data-reveal>
                 <span className="service-index">{service.index}</span>
                 <div>
                   <h3>{service.name}</h3>
@@ -205,14 +256,14 @@ export default function App() {
 
         <section className="experience" id="experiencia" aria-labelledby="experience-title">
           <div className="container experience-grid">
-            <div className="experience-image image-frame">
+            <div className="experience-image image-frame" data-reveal>
               <img src={images.beard} alt="Detalhe de barba sendo desenhada com navalha" loading="lazy" />
               <div className="image-note"><span>HANDS ON</span><strong>01/13</strong></div>
             </div>
-            <div className="experience-copy">
-              <p className="eyebrow">02 — A casa</p>
-              <h2 id="experience-title">Menos pressa.<br /><em>Mais presença.</em></h2>
-              <p className="lead">A Navalha 13 nasceu para fazer do cuidado pessoal uma pausa bem vivida. Madeira, couro, conversa boa e técnica que aparece no detalhe.</p>
+            <div className="experience-copy" data-reveal>
+              <p className="eyebrow">02 — A barbearia</p>
+              <h2 id="experience-title">Cadeira de couro.<br /><em>Mão de barbeiro.</em></h2>
+              <p className="lead">Espelho grande, toalha quente, navalha afiada e conversa sem pressa. Aqui o corte é clássico, o acabamento é atual e cada cliente sai alinhado.</p>
               <div className="experience-points">
                 <div><strong>45</strong><span>minutos de atenção real</span></div>
                 <div><strong>03</strong><span>profissionais especialistas</span></div>
@@ -225,23 +276,23 @@ export default function App() {
 
         <section className="gallery section" id="galeria" aria-labelledby="gallery-title">
           <div className="container">
-            <div className="section-heading gallery-heading">
-              <div>
-                <p className="eyebrow">03 — Dentro do ritual</p>
-                <h2 id="gallery-title">A técnica mora<br /><em>nos detalhes.</em></h2>
+          <div className="section-heading gallery-heading" data-reveal>
+            <div>
+              <p className="eyebrow">03 — Da cadeira para o espelho</p>
+              <h2 id="gallery-title">Trabalho que<br /><em>fala por si.</em></h2>
               </div>
               <span className="gallery-counter">01 <i /> 03</span>
             </div>
             <div className="gallery-grid">
-              <figure className="gallery-card gallery-tools"><img src={images.tools} alt="Navalha, tesoura e itens de grooming sobre bancada" loading="lazy" /><figcaption>Ferramentas que contam histórias.</figcaption></figure>
-              <figure className="gallery-card gallery-interior"><img src={images.interior} alt="Cadeira de couro em um ambiente de barbearia escuro e elegante" loading="lazy" /><figcaption>A pausa começa quando você entra.</figcaption></figure>
-              <div className="gallery-quote"><span>“</span><p>Não é só o que você vê no espelho. É como você sai pela porta.</p><strong>— NAVALHA 13</strong></div>
+              <figure className="gallery-card gallery-tools" data-reveal><img src={images.tools} alt="Navalha, tesoura e itens de barbearia sobre bancada" loading="lazy" /><figcaption>Ferramenta boa. Mão firme.</figcaption></figure>
+              <figure className="gallery-card gallery-interior" data-reveal><img src={images.interior} alt="Cadeira de couro em uma barbearia clássica de ambiente escuro" loading="lazy" /><figcaption>Sua cadeira já está esperando.</figcaption></figure>
+              <div className="gallery-quote" data-reveal><span>“</span><p>Toalha quente, espuma no rosto e o barulho da navalha. Aí sim.</p><strong>— JEITO DE BARBEARIA</strong></div>
             </div>
           </div>
         </section>
 
         <section className="testimonials section container" aria-labelledby="testimonials-title">
-          <div className="section-heading compact-heading">
+          <div className="section-heading compact-heading" data-reveal>
             <div>
               <p className="eyebrow">04 — Quem senta, volta</p>
               <h2 id="testimonials-title">Presença que<br /><em>fica.</em></h2>
@@ -250,7 +301,7 @@ export default function App() {
           </div>
           <div className="testimonial-grid">
             {testimonials.map((testimonial, index) => (
-              <article className="testimonial-card" key={testimonial.name}>
+              <article className="testimonial-card" key={testimonial.name} data-reveal>
                 <span className="testimonial-index">0{index + 1}</span>
                 <div className="stars" aria-label={`${testimonial.rating} estrelas`}><StarIcon /><StarIcon /><StarIcon /><StarIcon /><StarIcon /></div>
                 <blockquote>“{testimonial.quote}”</blockquote>
@@ -263,7 +314,7 @@ export default function App() {
         <section className="booking-section" id="agendamento" aria-labelledby="booking-title">
           <div className="booking-bg" aria-hidden="true"><span>N13</span></div>
           <div className="container booking-layout">
-            <div className="booking-intro">
+            <div className="booking-intro" data-reveal>
               <p className="eyebrow">05 — Seu horário</p>
               <h2 id="booking-title">Marque o<br /><em>seu ritual.</em></h2>
               <p>Escolha cada detalhe no seu ritmo. Leva menos de um minuto e é tudo uma <strong>simulação demonstrativa</strong>.</p>
@@ -274,7 +325,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="booking-panel">
+            <div className="booking-panel" data-reveal>
               {confirmationCode ? (
                 <div className="confirmation" role="status" aria-live="polite">
                   <div className="confirmation-icon"><CheckIcon /></div>

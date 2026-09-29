@@ -1,7 +1,7 @@
 # Plano de implementação — Navalha 13 Barbearia
 
 ## Objetivo
-Entregar uma landing page pública, responsiva e interativa para a Navalha 13 Barbearia, com experiência premium e um fluxo de agendamento demonstrativo. O usuário deve conseguir simular uma reserva escolhendo serviço, barbeiro, data, horário e dados de contato, sem pagamentos reais, sem cobrança e sem backend financeiro.
+Entregar uma landing page pública, responsiva e interativa para a Navalha 13 Barbearia, agora com sinais visuais clássicos inequívocos de barbearia (poste barber pole, letreiro listrado, linguagem direta de corte/barba/navalha, cadeira/couro/ferramentas) além do acabamento premium. O movimento deve ser visível como em um site comercial pronto: hero sequencial, reveals ao rolar, ticker contínuo, poste de listras animadas, microinterações de botão/card/imagem e progressão de agenda, sempre respeitando `prefers-reduced-motion`. O usuário deve conseguir simular uma reserva escolhendo serviço, barbeiro, data, horário e dados de contato, sem pagamentos reais, sem cobrança e sem backend financeiro.
 
 ## Arquitetura escolhida
 - **Frontend:** React + TypeScript + Vite.

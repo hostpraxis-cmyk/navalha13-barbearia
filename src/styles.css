@@ -168,3 +168,126 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+
+
+/* Camada de identidade de barbearia clássica + motion editorial */
+:root {
+  --pole-red: #c44036;
+  --pole-blue: #4f6f9d;
+  --pole-ivory: #f7f0de;
+}
+
+.hero h1 { max-width: 890px; }
+.hero-pole-wrap {
+  position: absolute;
+  z-index: 2;
+  right: max(11%, calc((100vw - 1180px) / 2 + 120px));
+  bottom: 158px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: var(--cream);
+  animation: poleArrive .8s .55s cubic-bezier(.2,.8,.2,1) both;
+}
+.hero-pole-wrap > span { color: rgba(241,235,221,.8); font-size: 8px; font-weight: 700; letter-spacing: .17em; line-height: 1.65; }
+.barber-pole {
+  position: relative;
+  display: flex;
+  width: 35px;
+  height: 116px;
+  flex-direction: column;
+  align-items: center;
+  padding: 7px 0;
+  filter: drop-shadow(0 5px 9px rgba(0,0,0,.5));
+  transform: rotate(7deg);
+}
+.pole-cap { z-index: 2; display: block; width: 35px; height: 9px; border: 1px solid rgba(255,255,255,.42); border-radius: 9px; background: linear-gradient(180deg,#e2d6bc,#756d5f 50%,#eee1c8); }
+.pole-glass { position: relative; display: block; width: 27px; flex: 1; overflow: hidden; border: 2px solid rgba(250,246,235,.68); border-radius: 13px; background: rgba(255,255,255,.16); box-shadow: inset 0 0 8px rgba(0,0,0,.6), 0 0 10px rgba(255,255,255,.13); }
+.pole-glass::before { position: absolute; z-index: 1; inset: 0; border-radius: inherit; background: linear-gradient(90deg,rgba(255,255,255,.4),transparent 24%,transparent 73%,rgba(255,255,255,.18)); content: ''; }
+.pole-glass i { position: absolute; inset: -35% -50%; display: block; background: repeating-linear-gradient(135deg,var(--pole-red) 0 12px,var(--pole-ivory) 12px 24px,var(--pole-blue) 24px 36px,var(--pole-ivory) 36px 48px); animation: poleSpin 2.5s linear infinite; }
+
+.barber-ticker { position: relative; z-index: 2; overflow: hidden; padding: 13px 0; border-top: 1px solid rgba(241,235,221,.15); border-bottom: 1px solid rgba(241,235,221,.15); background: #0c0b0a; }
+.barber-ticker::before, .barber-ticker::after { position: absolute; z-index: 2; top: 0; bottom: 0; width: 5px; background: repeating-linear-gradient(180deg,var(--pole-red) 0 7px,var(--pole-ivory) 7px 14px,var(--pole-blue) 14px 21px,var(--pole-ivory) 21px 28px); content: ''; }
+.barber-ticker::before { left: 0; }.barber-ticker::after { right: 0; }
+.ticker-track { display: flex; width: max-content; animation: tickerMove 28s linear infinite; will-change: transform; }
+.ticker-group { display: flex; align-items: center; gap: 27px; padding-right: 27px; white-space: nowrap; }
+.ticker-group b { color: var(--cream-dim); font-size: 9px; letter-spacing: .22em; }
+.ticker-group i { color: var(--copper); font-size: 13px; font-style: normal; }
+.barber-ticker:hover .ticker-track { animation-play-state: paused; }
+
+.service-card { overflow: hidden; }
+.service-card::before { position: absolute; top: 24px; right: 24px; color: rgba(213,180,122,.74); font-family: var(--display); font-size: 27px; transition: transform .35s ease, color .35s ease; }
+.service-card:nth-child(1)::before { content: '✂'; }
+.service-card:nth-child(2)::before { content: '〰'; }
+.service-card:nth-child(3)::before { content: '✦'; }
+.service-card:hover::before { color: var(--copper-bright); transform: rotate(-15deg) scale(1.18); }
+.service-card::after { position: absolute; right: auto; bottom: 0; left: 0; width: 0; height: 2px; background: var(--copper); content: ''; transition: width .35s ease; }
+.service-card:hover::after { width: 100%; }
+
+.site-header { transition: background .35s ease, border-color .35s ease; }
+.site-header:hover { border-color: rgba(241,235,221,.28); background: rgba(8,8,7,.36); }
+.brand-mark { animation: razorTilt 5s ease-in-out infinite; }
+.hero-stamp { animation: stampEnter .9s .5s cubic-bezier(.2,.8,.2,1) both, stampFloat 7s 1.4s ease-in-out infinite; }
+.hero-stamp::after { position: absolute; inset: 5px; border: 1px dashed rgba(213,180,122,.52); border-radius: 50%; content: ''; animation: stampOrbit 24s linear infinite; }
+.hero-image { animation: heroReveal 1.4s cubic-bezier(.2,.8,.2,1) both, heroDrift 24s 1.4s ease-in-out infinite alternate; }
+.hero-actions .button-primary { position: relative; overflow: hidden; isolation: isolate; }
+.hero-actions .button-primary::after, .booking-panel .button-primary::after { position: absolute; z-index: -1; top: -60%; bottom: -60%; left: -55%; width: 30%; background: rgba(255,255,255,.35); content: ''; transform: rotate(22deg); transition: left .6s ease; }
+.hero-actions .button-primary:hover::after, .booking-panel .button-primary:hover::after { left: 130%; }
+.button { position: relative; isolation: isolate; }
+.button-primary { overflow: hidden; }
+.button-primary::after { z-index: -1; }
+.gallery-card img { animation: imageBreathe 16s ease-in-out infinite alternate; }
+.gallery-card:nth-child(2) img { animation-delay: -6s; }
+.gallery-card:hover img { animation-play-state: paused; }
+.image-frame img { transition: transform .85s cubic-bezier(.2,.8,.2,1), filter .4s ease; }
+.image-frame:hover img { transform: scale(1.035) rotate(-.3deg); filter: grayscale(0) contrast(1.08); }
+.booking-panel { transition: transform .35s ease, box-shadow .35s ease; }
+.booking-panel:hover { transform: translateY(-3px); box-shadow: 16px 22px 0 rgba(197,106,59,.28); }
+.barber-card, .choice-card, .day-card, .time-slot { transition: transform .22s ease, color .22s ease, background .22s ease, border-color .22s ease, box-shadow .22s ease; }
+.barber-card.is-selected, .choice-card.is-selected { box-shadow: inset 3px 0 0 var(--copper); }
+.confirmation-icon { animation: confirmPop .55s cubic-bezier(.2,1.45,.5,1) both; }
+.confirmation h3 { animation: rise .5s .1s both; }
+
+html.reveal-ready [data-reveal] { opacity: 0; transform: translateY(32px); transition: opacity .72s cubic-bezier(.2,.8,.2,1), transform .72s cubic-bezier(.2,.8,.2,1); }
+html.reveal-ready [data-reveal].is-visible { opacity: 1; transform: translateY(0); }
+.services-grid .service-card:nth-child(2) { transition-delay: .1s; }
+.services-grid .service-card:nth-child(3) { transition-delay: .2s; }
+.gallery-grid [data-reveal]:nth-child(2) { transition-delay: .1s; }
+.gallery-grid [data-reveal]:nth-child(3) { transition-delay: .2s; }
+.testimonial-grid .testimonial-card:nth-child(2) { transition-delay: .1s; }
+.testimonial-grid .testimonial-card:nth-child(3) { transition-delay: .2s; }
+
+@keyframes poleSpin { to { transform: rotate(360deg); } }
+@keyframes tickerMove { to { transform: translateX(-50%); } }
+@keyframes poleArrive { from { opacity: 0; transform: translateY(20px) rotate(3deg); } to { opacity: 1; transform: translateY(0) rotate(0); } }
+@keyframes stampEnter { from { opacity: 0; scale: .75; } to { opacity: 1; scale: 1; } }
+@keyframes stampFloat { 0%,100% { translate: 0 0; } 50% { translate: 0 -7px; } }
+@keyframes stampOrbit { to { rotate: 360deg; } }
+@keyframes razorTilt { 0%,90%,100% { rotate: 0deg; } 94% { rotate: -18deg; } 97% { rotate: 10deg; } }
+@keyframes heroDrift { from { scale: 1; } to { scale: 1.065; } }
+@keyframes imageBreathe { from { scale: 1; } to { scale: 1.055; } }
+@keyframes confirmPop { from { opacity: 0; scale: .4; rotate: -30deg; } to { opacity: 1; scale: 1; rotate: 0; } }
+
+@media (max-width: 920px) {
+  .hero-pole-wrap { right: 10%; bottom: 125px; }
+}
+@media (max-width: 600px) {
+  .hero h1 { font-size: clamp(59px, 16.2vw, 76px); }
+  .hero-pole-wrap { top: 135px; right: 19px; bottom: auto; flex-direction: column; gap: 6px; }
+  .barber-pole { width: 28px; height: 91px; }
+  .pole-cap { width: 29px; height: 7px; }
+  .pole-glass { width: 22px; }
+  .hero-pole-wrap > span { font-size: 6px; text-align: center; }
+  .hero-stamp { right: 19px; bottom: 31px; }
+  .barber-ticker { padding: 11px 0; }
+  .ticker-group { gap: 17px; padding-right: 17px; }
+  .ticker-group b { font-size: 8px; }
+  .service-card::before { top: 19px; right: 19px; }
+  .booking-panel:hover { transform: none; box-shadow: 10px 10px 0 rgba(197,106,59,.28); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-pole-wrap, .pole-glass i, .ticker-track, .brand-mark, .hero-stamp, .hero-stamp::after, .hero-image, .gallery-card img, .confirmation-icon, .confirmation h3 { animation: none !important; }
+  html.reveal-ready [data-reveal], html.reveal-ready [data-reveal].is-visible { opacity: 1; transform: none; transition: none; }
+  .hero-actions .button-primary::after, .booking-panel .button-primary::after { display: none; }
+}

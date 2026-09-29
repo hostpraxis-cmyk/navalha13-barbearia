@@ -1,10 +1,10 @@
 # Direção visual — Navalha 13 Barbearia
 
 ## Tema
-**Alfaiataria noturna** — uma barbearia premium com presença editorial, atmosfera de clube e acabamento de estúdio fotográfico.
+**Barbearia de bairro, acabamento premium** — manter o preto e cobre da marca, mas deixar impossível confundir o site com outra categoria: barbearia clássica com placa, poste listrado animado, navalha, tesoura, couro, espelho e uma comunicação direta sobre corte e barba.
 
 ## Movimento de design
-Editorial premium + brutalismo refinado: blocos grandes, respiro generoso, tipografia de alto contraste, linhas finas, textura de papel e recortes de imagem com bordas sólidas.
+Barbearia clássica com acabamento editorial: tipografia de placa, madeira e couro, letreiro de fachada, listras diagonais do barber pole e um ticker de letreiro em movimento. Manter blocos grandes e hierarquia premium, sem esconder os símbolos que dizem “barbearia”.
 
 ## Princípios centrais
 - **Presença antes de ornamento:** o hero comunica valor em segundos.
@@ -17,24 +17,28 @@ Editorial premium + brutalismo refinado: blocos grandes, respiro generoso, tipog
 - Preto tinta `#080807`: profundidade, sobreposições e contraste.
 - Creme antigo `#F1EBDD`: leitura, cards claros e respiro.
 - Cobre queimado `#C56A3B`: CTA, seleção e pontos de energia.
+- Vermelho barbeiro `#C44036`, azul poste `#4F6F9D` e marfim `#F1EBDD`: somente no poste tradicional de três cores e nas listras do letreiro.
 - Dourado pálido `#D5B47A`: detalhes premium e indicadores de etapa.
 - Cinza fumaça `#8D8A82`: metadados e texto auxiliar.
 
 ## Paradigma de layout
-Landing page vertical com navegação sticky compacta, grids assimétricos, seção de serviços em cards editoriais, “manifesto” em duas colunas, galeria em mosaico e um booking dock com visual de concierge.
+Landing page de barbearia com navegação sticky, hero que diz corte e barba em voz alta, poste listrado como ícone animado, ticker de serviços, seção de serviços, história do barbeiro, galeria do salão e agenda visível com aparência de ficha de atendimento.
 
 ## Elementos assinatura
 - Wordmark “NAVALHA 13” em caixa alta com sublinhado cobre.
 - Selo circular “RITUAL / DESDE 2013” no hero.
+- Poste clássico vermelho, azul e marfim em posição de destaque no hero, com listras em rotação contínua.
+- Letreiro horizontal em movimento: “CORTE CLÁSSICO · BARBA NA RÉGUA · NAVALHA TRADICIONAL”.
+- Ícones de tesoura/navalha nos serviços e detalhes inspirados em espelhos e cadeiras de barbeiro.
 - Linhas de régua e numeração de seção `01 — 05`.
 - Campo de agendamento que se transforma de seleção em comprovante.
 - Textura pontilhada muito sutil no fundo e marcações de grid.
 
 ## Filosofia de interação
-A interface responde sem surpresas: hover levanta cards, seleção acende o cobre, horários ocupados ficam legíveis porém bloqueados, e a confirmação celebra sem esconder o contexto. Todas as ações têm foco visível e estados de teclado.
+A interface responde sem surpresas e parece viva: animação de entrada no scroll para as seções, imagens com movimento lento, cards que levantam, botões com brilho passando, poste em rotação, letreiro em movimento e feedback de booking. Horários ocupados ficam bloqueados; confirmação mantém contexto. Todas as ações têm foco visível e estados de teclado.
 
 ## Animação
-Entrada por fade + translateY curto com `prefers-reduced-motion` respeitado; parallax leve apenas no hero; linha de progresso do booking se preenche a cada etapa; transições entre estados com easing suave e duração entre 180–500ms.
+Entrada no hero em sequência; IntersectionObserver revela seções e cards em ondas ao rolar; poste de barbeiro com listras girando; ticker contínuo; brilho rápido nos CTAs; imagens com zoom muito lento; hover com elevação e acento; linha de progresso do booking preenche cada etapa. Movimento contínuo suave, nunca piscante, e `prefers-reduced-motion` desliga/reduz todo movimento automático.
 
 ## Tipografia
 - Display: **Cormorant Garamond**, serif editorial com personalidade, para títulos e números grandes.
