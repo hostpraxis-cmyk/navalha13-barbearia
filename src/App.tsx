@@ -1,421 +1,140 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
-import { barbers, images, scheduleDays, services, slotsByDay, testimonials } from './data'
+import { useEffect, useRef, useState } from 'react'
+import { BrowserRouter, Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { AboutPage, ArrowIcon, BarbersPage, BookingPage, BrandMark, GalleryPage, HomePage, PrivacyPage, ServicesPage } from './pages'
 
-type BookingState = {
-  serviceId: string
-  barberId: string
-  dayId: string
-  time: string
-  name: string
-  whatsapp: string
+type CookieConsent = { analytics: boolean }
+
+const pageTitles: Record<string, { title: string; description: string }> = {
+  '/': { title: 'Início | Navalha 13 Barbearia', description: 'Barbearia clássica, corte, barba e agenda demonstrativa da Navalha 13.' },
+  '/servicos': { title: 'Serviços | Navalha 13 Barbearia', description: 'Conheça os serviços demonstrativos de corte, barba e combo da Navalha 13.' },
+  '/barbeiros': { title: 'Barbeiros | Navalha 13 Barbearia', description: 'Conheça a equipe e as especialidades demonstrativas da Navalha 13.' },
+  '/galeria': { title: 'Galeria | Navalha 13 Barbearia', description: 'Veja imagens da barbearia, dos cortes, da barba e das ferramentas.' },
+  '/sobre': { title: 'Sobre | Navalha 13 Barbearia', description: 'Conheça a experiência e a casa demonstrativa da Navalha 13.' },
+  '/agendar': { title: 'Agendar | Navalha 13 Barbearia', description: 'Simule um horário de corte ou barba. Sem pagamento ou reserva real.' },
+  '/privacidade': { title: 'Privacidade e cookies | Navalha 13', description: 'Entenda o consentimento de cookies desta demonstração e altere suas preferências.' },
 }
 
-const initialBooking: BookingState = {
-  serviceId: '',
-  barberId: '',
-  dayId: 'ter',
-  time: '',
-  name: '',
-  whatsapp: '',
+function readConsent(): CookieConsent | null {
+  const entry = document.cookie.split(';').map((part) => part.trim()).find((part) => part.startsWith('n13_cookie_consent='))
+  if (!entry) return null
+  return { analytics: entry.split('=').slice(1).join('=').split('&').includes('analytics=1') }
 }
 
-function useScrollReveal() {
+function writeConsent(consent: CookieConsent) {
+  const secure = window.location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `n13_cookie_consent=necessary=1&analytics=${consent.analytics ? '1' : '0'}; Max-Age=15552000; Path=/; SameSite=Lax${secure}`
+}
+
+function useScrollReveal(pathname: string) {
   useEffect(() => {
     const root = document.documentElement
     const targets = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'))
     root.classList.add('reveal-ready')
-
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (prefersReducedMotion || !('IntersectionObserver' in window)) {
       targets.forEach((target) => target.classList.add('is-visible'))
       return () => root.classList.remove('reveal-ready')
     }
-
     const observer = new IntersectionObserver((entries, currentObserver) => {
       entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('is-visible')
-          currentObserver.unobserve(entry.target)
-        }
+        if (entry.isIntersecting) { entry.target.classList.add('is-visible'); currentObserver.unobserve(entry.target) }
       })
     }, { threshold: 0.12, rootMargin: '0px 0px -44px 0px' })
-
     targets.forEach((target) => observer.observe(target))
-    return () => {
-      observer.disconnect()
-      root.classList.remove('reveal-ready')
+    return () => { observer.disconnect(); root.classList.remove('reveal-ready') }
+  }, [pathname])
+}
+
+function RouteEffects() {
+  const { pathname } = useLocation()
+  useScrollReveal(pathname)
+  useEffect(() => {
+    const metadata = pageTitles[pathname] ?? { title: 'Página não encontrada | Navalha 13', description: 'Página não encontrada na Navalha 13.' }
+    document.title = metadata.title
+    let description = document.querySelector<HTMLMetaElement>('meta[name="description"]')
+    if (!description) { description = document.createElement('meta'); description.name = 'description'; document.head.appendChild(description) }
+    description.content = metadata.description
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }, [pathname])
+  return null
+}
+
+const navigation = [
+  { to: '/', label: 'Início', end: true },
+  { to: '/servicos', label: 'Serviços' },
+  { to: '/barbeiros', label: 'Barbeiros' },
+  { to: '/galeria', label: 'Galeria' },
+  { to: '/sobre', label: 'A casa' },
+]
+
+function SiteHeader() {
+  const [menuOpen, setMenuOpen] = useState(false)
+  return <header className="site-header"><Link className="brand" to="/" aria-label="Navalha 13 - início"><BrandMark /><span><strong>NAVALHA</strong><em>13</em></span></Link><button className="menu-toggle" type="button" aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'} aria-expanded={menuOpen} aria-controls="main-navigation" onClick={() => setMenuOpen((current) => !current)}><span /><span /><span /></button><nav id="main-navigation" className={menuOpen ? 'is-open' : ''} aria-label="Páginas do site">{navigation.map((item) => <NavLink key={item.to} to={item.to} end={item.end} onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'is-active' : ''}>{item.label}</NavLink>)}</nav><NavLink className={({ isActive }) => isActive ? 'header-cta is-active' : 'header-cta'} to="/agendar" onClick={() => setMenuOpen(false)}>Agendar <ArrowIcon /></NavLink></header>
+}
+
+function SiteFooter({ onManageCookies }: { onManageCookies: () => void }) {
+  return <footer className="site-footer container"><Link className="brand footer-brand" to="/"><BrandMark /><span><strong>NAVALHA</strong><em>13</em></span></Link><p>© 2026 Navalha 13. Barbearia demonstrativa.</p><div className="footer-links"><Link to="/privacidade">Privacidade e cookies</Link><button type="button" onClick={onManageCookies}>Configurar cookies</button><Link to="/agendar">Ver agenda</Link></div></footer>
+}
+
+function CookieNotice({ forceOpen, onClose }: { forceOpen: boolean; onClose: () => void }) {
+  const [consent, setConsent] = useState<CookieConsent | null>(() => readConsent())
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [analytics, setAnalytics] = useState(false)
+  const dialogRef = useRef<HTMLElement>(null)
+  const previousFocus = useRef<HTMLElement | null>(null)
+  const openSettings = () => {
+    previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setAnalytics(readConsent()?.analytics ?? false)
+    setSettingsOpen(true)
+  }
+  const closeSettings = () => { setSettingsOpen(false); onClose() }
+  useEffect(() => { if (forceOpen) openSettings() }, [forceOpen])
+  useEffect(() => {
+    if (!settingsOpen) return
+    const dialog = dialogRef.current
+    const focusable = () => Array.from(dialog?.querySelectorAll<HTMLElement>('button, input, a[href], [tabindex]:not([tabindex="-1"])') ?? []).filter((item) => !item.hasAttribute('disabled'))
+    focusable()[0]?.focus()
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { closeSettings(); return }
+      if (event.key !== 'Tab' || !dialog) return
+      const items = focusable()
+      const first = items[0]
+      const last = items[items.length - 1]
+      if (!first || !last) { event.preventDefault(); dialog.focus(); return }
+      if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) { event.preventDefault(); first.focus() }
     }
-  }, [])
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      if (previousFocus.current?.isConnected) previousFocus.current.focus()
+      else document.querySelector<HTMLElement>('.header-cta')?.focus()
+    }
+  }, [settingsOpen])
+  const save = (allowAnalytics: boolean) => {
+    const choice = { analytics: allowAnalytics }
+    writeConsent(choice)
+    setConsent(choice)
+    setSettingsOpen(false)
+    onClose()
+  }
+  return <>
+    {!consent && <aside className="cookie-banner" role="region" aria-label="Preferências de cookies"><div className="cookie-banner-copy"><p className="eyebrow">Sua privacidade</p><h2>Cookies, do seu jeito.</h2><p>Usamos um cookie necessário para lembrar sua escolha. Nenhum rastreador de terceiros está ativo.</p><Link to="/privacidade">Ler sobre cookies</Link></div><div className="cookie-actions"><button className="button button-ghost" type="button" onClick={() => save(false)}>Só necessários</button><button className="button button-primary" type="button" onClick={() => save(true)}>Aceitar opcionais</button><button className="cookie-preferences" type="button" onClick={() => { setAnalytics(readConsent()?.analytics ?? false); setSettingsOpen(true) }}>Personalizar</button></div></aside>}
+    {settingsOpen && <div className="cookie-backdrop" role="presentation"><section className="cookie-dialog" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="cookie-title" tabIndex={-1}><button className="cookie-close" type="button" aria-label="Fechar preferências" onClick={closeSettings}>×</button><p className="eyebrow">Preferências do navegador</p><h2 id="cookie-title">Escolha seus cookies.</h2><p>Esta demonstração salva a escolha em um cookie próprio. Não há ferramentas de analytics nem rastreadores de terceiros instalados.</p><div className="cookie-option"><div><strong>Necessários</strong><span>Essenciais para salvar sua preferência. Sempre ativos.</span></div><span className="cookie-always-on">Sempre ativos</span></div><label className="cookie-option cookie-toggle"><span><strong>Analytics opcionais</strong><span>Preferência registrada, sem serviço de terceiros nesta demonstração.</span></span><input type="checkbox" checked={analytics} onChange={(event) => setAnalytics(event.target.checked)} /></label><div className="cookie-dialog-actions"><button className="button button-ghost" type="button" onClick={() => save(false)}>Rejeitar opcionais</button><button className="button button-primary" type="button" onClick={() => save(analytics)}>Salvar escolhas</button></div></section></div>}
+  </>
 }
 
-function BarberPole() {
-  return (
-    <div className="barber-pole" aria-hidden="true">
-      <span className="pole-cap" />
-      <span className="pole-glass"><i /></span>
-      <span className="pole-cap" />
-    </div>
-  )
+function AppRoutes({ onManageCookies }: { onManageCookies: () => void }) {
+  const navigate = useNavigate()
+  const book = (serviceId?: string) => navigate(serviceId ? `/agendar?servico=${encodeURIComponent(serviceId)}` : '/agendar')
+  return <Routes><Route path="/" element={<HomePage />} /><Route path="/servicos" element={<ServicesPage onBook={book} />} /><Route path="/barbeiros" element={<BarbersPage onBook={book} />} /><Route path="/galeria" element={<GalleryPage />} /><Route path="/sobre" element={<AboutPage />} /><Route path="/agendar" element={<BookingPage />} /><Route path="/privacidade" element={<PrivacyPage onManageCookies={onManageCookies} />} /><Route path="*" element={<main className="container not-found"><p className="eyebrow">404 — página não encontrada</p><h1>Esta cadeira<br /><em>está vazia.</em></h1><Link className="button button-primary" to="/">Voltar ao início <ArrowIcon /></Link></main>} /></Routes>
 }
 
-function BrandMark() {
-  return (
-    <span className="brand-mark" aria-hidden="true">
-      <span />
-      <span />
-      <i />
-    </span>
-  )
-}
-
-function ArrowIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="icon-arrow">
-      <path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="icon-check">
-      <path d="m5 12.6 4.2 4.1L19.4 6.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function StarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="icon-star">
-      <path d="m12 3 2.6 5.4 6 .9-4.3 4.2 1 5.9-5.3-2.9-5.3 2.9 1-5.9L3.4 9.3l6-.9L12 3Z" fill="currentColor" />
-    </svg>
-  )
+function AppContent() {
+  const [manageCookies, setManageCookies] = useState(false)
+  return <div className="site-shell"><RouteEffects /><SiteHeader /><AppRoutes onManageCookies={() => setManageCookies(true)} /><SiteFooter onManageCookies={() => setManageCookies(true)} /><CookieNotice forceOpen={manageCookies} onClose={() => setManageCookies(false)} /></div>
 }
 
 export default function App() {
-  useScrollReveal()
-  const [booking, setBooking] = useState<BookingState>(initialBooking)
-  const [formMessage, setFormMessage] = useState('')
-  const [confirmationCode, setConfirmationCode] = useState('')
-
-  const selectedService = useMemo(
-    () => services.find((service) => service.id === booking.serviceId),
-    [booking.serviceId],
-  )
-  const selectedBarber = useMemo(
-    () => barbers.find((barber) => barber.id === booking.barberId),
-    [booking.barberId],
-  )
-  const selectedDay = useMemo(
-    () => scheduleDays.find((day) => day.id === booking.dayId),
-    [booking.dayId],
-  )
-
-  const completedSteps = [booking.serviceId, booking.barberId, booking.time, booking.name && booking.whatsapp].filter(Boolean).length
-  const bookingReady = Boolean(booking.serviceId && booking.barberId && booking.dayId && booking.time)
-
-  const setBookingField = <K extends keyof BookingState>(field: K, value: BookingState[K]) => {
-    setBooking((current) => ({ ...current, [field]: value }))
-    setFormMessage('')
-  }
-
-  const selectDay = (dayId: string) => {
-    setBooking((current) => ({ ...current, dayId, time: '' }))
-    setFormMessage('')
-  }
-
-  const phoneDigits = booking.whatsapp.replace(/\D/g, '')
-
-  const formatPhone = (value: string) => {
-    const digits = value.replace(/\D/g, '').slice(0, 11)
-    if (digits.length <= 2) return digits
-    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
-    if (digits.length <= 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
-    return digits
-  }
-
-  const submitBooking = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!bookingReady) {
-      setFormMessage('Escolha serviço, profissional, data e horário antes de confirmar.')
-      return
-    }
-    if (booking.name.trim().length < 2) {
-      setFormMessage('Informe seu nome para continuar.')
-      return
-    }
-    if (phoneDigits.length < 10) {
-      setFormMessage('Informe um WhatsApp válido com DDD.')
-      return
-    }
-
-    const protocol = `N13-${Math.floor(1000 + Math.random() * 9000)}-${booking.dayId.toUpperCase()}`
-    setConfirmationCode(protocol)
-    setFormMessage('')
-  }
-
-  const restartBooking = () => {
-    setBooking(initialBooking)
-    setConfirmationCode('')
-    setFormMessage('')
-    window.setTimeout(() => {
-      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      document.querySelector('#agendamento')?.scrollIntoView({
-        behavior: prefersReducedMotion ? 'auto' : 'smooth',
-        block: 'start',
-      })
-    }, 50)
-  }
-
-  return (
-    <div className="site-shell">
-      <header className="site-header">
-        <a className="brand" href="#inicio" aria-label="Navalha 13 - início">
-          <BrandMark />
-          <span>
-            <strong>NAVALHA</strong>
-            <em>13</em>
-          </span>
-        </a>
-        <nav aria-label="Navegação principal">
-          <a href="#servicos">Serviços</a>
-          <a href="#experiencia">A casa</a>
-          <a href="#galeria">Galeria</a>
-        </nav>
-        <a className="header-cta" href="#agendamento">
-          Agendar <ArrowIcon />
-        </a>
-      </header>
-
-      <main>
-        <section className="hero" id="inicio" aria-labelledby="hero-title">
-          <div className="hero-grid" aria-hidden="true" />
-          <div className="hero-image-wrap">
-            <img src={images.hero} alt="Barbeiro refinando a barba de um cliente" className="hero-image" />
-          </div>
-          <div className="hero-content container">
-            <p className="eyebrow entrance">Barbearia clássica · corte · barba</p>
-            <h1 id="hero-title" className="entrance delay-1">
-              Corte afiado.<br />
-              <span>Barba na régua.</span>
-            </h1>
-            <p className="hero-copy entrance delay-2">Corte bem feito, barba na régua e aquele tempo de cadeira que faz diferença. Chega mais.</p>
-            <div className="hero-actions entrance delay-3">
-              <a className="button button-primary" href="#agendamento">Reservar meu horário <ArrowIcon /></a>
-              <a className="button button-ghost" href="#servicos">Conhecer a casa</a>
-            </div>
-            <div className="hero-trust entrance delay-4">
-              <div className="rating-pill"><StarIcon /><strong>4.9</strong><span>em 380 rituais</span></div>
-              <div className="hero-rule" />
-              <p>Ter — Sáb<br /><strong>09h às 20h</strong></p>
-            </div>
-          </div>
-          <div className="hero-stamp" aria-label="Navalha 13 desde 2013">
-            <span>desde</span><strong>2013</strong><span>ritual urbano</span>
-          </div>
-          <div className="hero-pole-wrap"><BarberPole /><span>BARBEARIA<br />DESDE 2013</span></div>
-          <a className="scroll-cue" href="#servicos" aria-label="Descer até os serviços"><span /> rolar</a>
-        </section>
-
-        <div className="barber-ticker" aria-label="Corte clássico, barba na régua e navalha tradicional">
-          <div className="ticker-track" aria-hidden="true">
-            {[0, 1].map((copy) => (
-              <span className="ticker-group" key={copy}>
-                <b>CORTE CLÁSSICO</b><i>✦</i><b>BARBA NA RÉGUA</b><i>✦</i><b>NAVALHA TRADICIONAL</b><i>✦</i><b>CAFÉ PASSADO NA HORA</b><i>✦</i>
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <section className="services section container" id="servicos" aria-labelledby="services-title">
-          <div className="section-heading split-heading" data-reveal>
-            <div>
-              <p className="eyebrow">01 — Serviços de barbearia</p>
-              <h2 id="services-title">Corte, barba e<br /><em>capricho.</em></h2>
-            </div>
-            <p>Do desenho da barba ao último toque do acabamento, cada serviço tem ritmo, técnica e espaço para você chegar no resultado certo.</p>
-          </div>
-          <div className="services-grid">
-            {services.map((service) => (
-              <article className="service-card" key={service.id} data-reveal>
-                <span className="service-index">{service.index}</span>
-                <div>
-                  <h3>{service.name}</h3>
-                  <p>{service.description}</p>
-                </div>
-                <div className="service-footer">
-                  <span>{service.duration}</span>
-                  <strong>{service.price}</strong>
-                </div>
-                <a href="#agendamento" onClick={() => setBookingField('serviceId', service.id)} aria-label={`Escolher ${service.name}`}>Escolher <ArrowIcon /></a>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="experience" id="experiencia" aria-labelledby="experience-title">
-          <div className="container experience-grid">
-            <div className="experience-image image-frame" data-reveal>
-              <img src={images.beard} alt="Detalhe de barba sendo desenhada com navalha" loading="lazy" />
-              <div className="image-note"><span>HANDS ON</span><strong>01/13</strong></div>
-            </div>
-            <div className="experience-copy" data-reveal>
-              <p className="eyebrow">02 — A barbearia</p>
-              <h2 id="experience-title">Cadeira de couro.<br /><em>Mão de barbeiro.</em></h2>
-              <p className="lead">Espelho grande, toalha quente, navalha afiada e conversa sem pressa. Aqui o corte é clássico, o acabamento é atual e cada cliente sai alinhado.</p>
-              <div className="experience-points">
-                <div><strong>45</strong><span>minutos de atenção real</span></div>
-                <div><strong>03</strong><span>profissionais especialistas</span></div>
-                <div><strong>01</strong><span>cadeira com o seu nome</span></div>
-              </div>
-              <a href="#agendamento" className="text-link">Encontrar meu horário <ArrowIcon /></a>
-            </div>
-          </div>
-        </section>
-
-        <section className="gallery section" id="galeria" aria-labelledby="gallery-title">
-          <div className="container">
-          <div className="section-heading gallery-heading" data-reveal>
-            <div>
-              <p className="eyebrow">03 — Da cadeira para o espelho</p>
-              <h2 id="gallery-title">Trabalho que<br /><em>fala por si.</em></h2>
-              </div>
-              <span className="gallery-counter">01 <i /> 03</span>
-            </div>
-            <div className="gallery-grid">
-              <figure className="gallery-card gallery-tools" data-reveal><img src={images.tools} alt="Navalha, tesoura e itens de barbearia sobre bancada" loading="lazy" /><figcaption>Ferramenta boa. Mão firme.</figcaption></figure>
-              <figure className="gallery-card gallery-interior" data-reveal><img src={images.interior} alt="Cadeira de couro em uma barbearia clássica de ambiente escuro" loading="lazy" /><figcaption>Sua cadeira já está esperando.</figcaption></figure>
-              <div className="gallery-quote" data-reveal><span>“</span><p>Toalha quente, espuma no rosto e o barulho da navalha. Aí sim.</p><strong>— JEITO DE BARBEARIA</strong></div>
-            </div>
-          </div>
-        </section>
-
-        <section className="testimonials section container" aria-labelledby="testimonials-title">
-          <div className="section-heading compact-heading" data-reveal>
-            <div>
-              <p className="eyebrow">04 — Quem senta, volta</p>
-              <h2 id="testimonials-title">Presença que<br /><em>fica.</em></h2>
-            </div>
-            <div className="testimonial-score"><span>Nota média</span><strong>4.9 <StarIcon /></strong></div>
-          </div>
-          <div className="testimonial-grid">
-            {testimonials.map((testimonial, index) => (
-              <article className="testimonial-card" key={testimonial.name} data-reveal>
-                <span className="testimonial-index">0{index + 1}</span>
-                <div className="stars" aria-label={`${testimonial.rating} estrelas`}><StarIcon /><StarIcon /><StarIcon /><StarIcon /><StarIcon /></div>
-                <blockquote>“{testimonial.quote}”</blockquote>
-                <footer><strong>{testimonial.name}</strong><span>{testimonial.detail}</span></footer>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="booking-section" id="agendamento" aria-labelledby="booking-title">
-          <div className="booking-bg" aria-hidden="true"><span>N13</span></div>
-          <div className="container booking-layout">
-            <div className="booking-intro" data-reveal>
-              <p className="eyebrow">05 — Seu horário</p>
-              <h2 id="booking-title">Marque o<br /><em>seu ritual.</em></h2>
-              <p>Escolha cada detalhe no seu ritmo. Leva menos de um minuto e é tudo uma <strong>simulação demonstrativa</strong>.</p>
-              <div className="booking-disclaimer"><span><CheckIcon /></span> Nenhum pagamento ou cobrança será feito.</div>
-              <div className="booking-progress" aria-label={`${completedSteps} de 4 etapas concluídas`}>
-                <div className="progress-line"><i style={{ width: `${(completedSteps / 4) * 100}%` }} /></div>
-                <span>{completedSteps}/4 etapas</span>
-              </div>
-            </div>
-
-            <div className="booking-panel" data-reveal>
-              {confirmationCode ? (
-                <div className="confirmation" role="status" aria-live="polite">
-                  <div className="confirmation-icon"><CheckIcon /></div>
-                  <p className="eyebrow">Horário separado</p>
-                  <h3>Ritual confirmado.</h3>
-                  <p className="confirmation-copy">Tudo certo, {booking.name.trim().split(' ')[0]}. Guardamos este horário na nossa agenda demonstrativa.</p>
-                  <div className="protocol"><span>PROTOCOLO</span><strong>{confirmationCode}</strong></div>
-                  <dl className="confirmation-details">
-                    <div><dt>Serviço</dt><dd>{selectedService?.name}</dd></div>
-                    <div><dt>Profissional</dt><dd>{selectedBarber?.name}</dd></div>
-                    <div><dt>Horário</dt><dd>{selectedDay?.label} · {booking.time}</dd></div>
-                  </dl>
-                  <p className="demo-note">Demonstração concluída. Nenhuma reserva real foi criada.</p>
-                  <button className="button button-primary button-full" type="button" onClick={restartBooking}>Agendar outro horário <ArrowIcon /></button>
-                </div>
-              ) : (
-                <form onSubmit={submitBooking} noValidate>
-                  <div className="booking-panel-top"><span>AGENDA / DEMO</span><span>etapas 01 — 04</span></div>
-
-                  <fieldset className="booking-step">
-                    <legend><span>01</span> Escolha seu ritual</legend>
-                    <div className="choice-grid service-choice-grid">
-                      {services.map((service) => (
-                        <button className={`choice-card ${booking.serviceId === service.id ? 'is-selected' : ''}`} type="button" key={service.id} onClick={() => setBookingField('serviceId', service.id)} aria-pressed={booking.serviceId === service.id}>
-                          <strong>{service.name}</strong><span>{service.duration}</span><em>{service.price}</em>
-                        </button>
-                      ))}
-                    </div>
-                  </fieldset>
-
-                  <fieldset className="booking-step">
-                    <legend><span>02</span> Com quem você senta</legend>
-                    <div className="barber-list">
-                      {barbers.map((barber) => (
-                        <button className={`barber-card ${booking.barberId === barber.id ? 'is-selected' : ''}`} type="button" key={barber.id} onClick={() => setBookingField('barberId', barber.id)} aria-pressed={booking.barberId === barber.id}>
-                          <span className={`barber-avatar ${barber.tone}`}>{barber.initials}</span>
-                          <span><strong>{barber.name}</strong><em>{barber.specialty}</em></span>
-                          <i>{booking.barberId === barber.id ? <CheckIcon /> : '+'}</i>
-                        </button>
-                      ))}
-                    </div>
-                  </fieldset>
-
-                  <fieldset className="booking-step">
-                    <legend><span>03</span> Quando o seu tempo abre</legend>
-                    <div className="day-list" aria-label="Escolher data">
-                      {scheduleDays.map((day) => (
-                        <button className={`day-card ${booking.dayId === day.id ? 'is-selected' : ''}`} type="button" key={day.id} onClick={() => selectDay(day.id)} aria-pressed={booking.dayId === day.id}>
-                          <span>{day.week}</span><strong>{day.day}</strong><em>{day.label}</em>
-                        </button>
-                      ))}
-                    </div>
-                    <div className="time-meta"><span>Horários disponíveis</span><span><i className="time-key available" /> livre <i className="time-key busy" /> ocupado</span></div>
-                    <div className="time-grid">
-                      {slotsByDay[booking.dayId].map((slot) => (
-                        <button className={`time-slot ${booking.time === slot.time ? 'is-selected' : ''} ${slot.occupied ? 'is-occupied' : ''}`} type="button" key={slot.time} disabled={slot.occupied} onClick={() => setBookingField('time', slot.time)} aria-pressed={booking.time === slot.time}>
-                          {slot.time}
-                        </button>
-                      ))}
-                    </div>
-                  </fieldset>
-
-                  <fieldset className="booking-step contact-step">
-                    <legend><span>04</span> Quem vamos receber</legend>
-                    <div className="contact-grid">
-                      <label>Seu nome<input type="text" value={booking.name} onChange={(event) => setBookingField('name', event.target.value)} placeholder="Ex.: Rafael Martins" autoComplete="name" /></label>
-                      <label>Seu WhatsApp<input type="tel" value={booking.whatsapp} onChange={(event) => setBookingField('whatsapp', formatPhone(event.target.value))} placeholder="(11) 99999-9999" autoComplete="tel" inputMode="numeric" /></label>
-                    </div>
-                  </fieldset>
-
-                  <div className="booking-summary" aria-live="polite">
-                    <div><span>Seu ritual</span><strong>{selectedService?.name ?? 'Escolha um serviço'}</strong></div>
-                    <div><span>Quando</span><strong>{booking.time ? `${selectedDay?.label} · ${booking.time}` : 'Selecione data e horário'}</strong></div>
-                    <span className="summary-price">{selectedService?.price ?? '—'}</span>
-                  </div>
-                  {formMessage && <p className="form-message" role="alert">{formMessage}</p>}
-                  <button className="button button-primary button-full" type="submit">Confirmar horário demonstrativo <ArrowIcon /></button>
-                  <p className="form-hint">Ao confirmar, você verá apenas uma simulação. Não existe pagamento, cobrança ou reserva real.</p>
-                </form>
-              )}
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <footer className="site-footer container">
-        <a className="brand footer-brand" href="#inicio"><BrandMark /><span><strong>NAVALHA</strong><em>13</em></span></a>
-        <p>© 2026 Navalha 13. Feito para quem faz questão do detalhe.</p>
-        <a href="#agendamento" className="text-link">Voltar para agenda <ArrowIcon /></a>
-      </footer>
-    </div>
-  )
+  return <BrowserRouter basename={import.meta.env.BASE_URL}><AppContent /></BrowserRouter>
 }

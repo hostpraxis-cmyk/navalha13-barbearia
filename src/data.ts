@@ -20,12 +20,13 @@ export type Slot = {
   occupied?: boolean
 }
 
+const publicBase = import.meta.env.BASE_URL
 export const images = {
-  hero: '/manus-storage/async-images/TAYRp9StaUhnWiGc72ezkF/image-2.webp',
-  beard: '/manus-storage/async-images/TAYRp9StaUhnWiGc72ezkF/image-3.webp',
-  tools: '/manus-storage/async-images/TAYRp9StaUhnWiGc72ezkF/image-4.webp',
-  interior: '/manus-storage/async-images/TAYRp9StaUhnWiGc72ezkF/image-5.webp',
-  mark: '/manus-storage/async-images/TAYRp9StaUhnWiGc72ezkF/image-1.webp',
+  hero: `${publicBase}images/hero.webp`,
+  beard: `${publicBase}images/beard.webp`,
+  tools: `${publicBase}images/tools.webp`,
+  interior: `${publicBase}images/interior.webp`,
+  mark: `${publicBase}images/mark.webp`,
 }
 
 export const services: Service[] = [
