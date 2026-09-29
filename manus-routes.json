@@ -1,0 +1,11 @@
+{
+  "routes": [
+    { "path": "/", "title": "Início | Navalha 13" },
+    { "path": "/servicos", "title": "Serviços | Navalha 13" },
+    { "path": "/barbeiros", "title": "Barbeiros | Navalha 13" },
+    { "path": "/galeria", "title": "Galeria | Navalha 13" },
+    { "path": "/sobre", "title": "Sobre | Navalha 13" },
+    { "path": "/agendar", "title": "Agendar | Navalha 13" },
+    { "path": "/privacidade", "title": "Privacidade e cookies | Navalha 13" }
+  ]
+}
