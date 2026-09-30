@@ -8,6 +8,9 @@ COPY src ./src
 COPY public ./public
 COPY shared ./shared
 COPY server ./server
+# Public OAuth Client ID consumed by Vite during build; inject it again at runtime for API token verification.
+ARG VITE_GOOGLE_CLIENT_ID
+ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
 RUN pnpm build
 
 FROM node:22-bookworm-slim AS runtime
