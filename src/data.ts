@@ -13,6 +13,7 @@ export type Barber = {
   specialty: string
   initials: string
   tone: string
+  photo: string
 }
 
 export type Slot = {
@@ -57,9 +58,9 @@ export const services: Service[] = [
 ]
 
 export const barbers: Barber[] = [
-  { id: 'marcos', name: 'Marcos Fiore', specialty: 'Fades & precisão', initials: 'MF', tone: 'copper' },
-  { id: 'caio', name: 'Caio Mendes', specialty: 'Barba & navalha', initials: 'CM', tone: 'cream' },
-  { id: 'rafa', name: 'Rafa Lins', specialty: 'Clássicos & textura', initials: 'RL', tone: 'sand' },
+  { id: 'marcos', name: 'Marcos Fiore', specialty: 'Fades & precisão', initials: 'MF', tone: 'copper', photo: images.hero },
+  { id: 'caio', name: 'Caio Mendes', specialty: 'Barba & navalha', initials: 'CM', tone: 'cream', photo: images.beard },
+  { id: 'rafa', name: 'Rafa Lins', specialty: 'Clássicos & textura', initials: 'RL', tone: 'sand', photo: images.tools },
 ]
 
 export const scheduleDays = [

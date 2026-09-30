@@ -50,3 +50,12 @@ O conteúdo permanece uma aplicação pública estática, sem API, banco, login 
 ## Limites
 - Sem pagamentos, backend de agenda, persistência de reserva, analytics de terceiros, disparo real de WhatsApp ou envio de dados pessoais.
 - Valores, barbeiros, localização/horários e slots permanecem demonstrativos.
+
+
+## Revisão visual solicitada pelo usuário — 30/09/2026
+- A home e as páginas internas devem parecer inequivocamente uma barbearia: fotografia mais evidente, poste tricolor maior, referências visuais a navalha/tesoura/cadeira e acentos vermelho/azul/marfim junto do carvão/cobre existente.
+- Substituir a malha de caixas retangulares por composição editorial assimétrica, cards independentes de cantos arredondados, recortes em arco e fotos com formas orgânicas; manter leitura e responsividade.
+- Tornar mais visíveis as animações já previstas (entrada do hero, letreiro/poste, revelações no scroll, movimento lento das fotos e microinterações dos cards/CTAs) e respeitar `prefers-reduced-motion`.
+- Preservar as sete rotas, o menu responsivo, consentimento de cookies configurável e agenda demonstrativa sem pagamento, contato ou reserva real.
+- Usar os assets locais existentes em `public/images/`; não introduzir novos serviços externos.
+- Verificação: executar os builds existentes, validar manifesto e rotas/recursos, depois atualizar `main` e `gh-pages` apenas após integração fast-forward e checks afetados.
