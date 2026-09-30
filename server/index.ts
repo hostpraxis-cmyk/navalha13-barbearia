@@ -1,10 +1,13 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
+import { extname, resolve } from 'node:path'
 import express, { type Request, type Response } from 'express'
 import { OAuth2Client } from 'google-auth-library'
 import type { RowDataPacket } from 'mysql2'
 import type { AccountUser, SimulationRecord } from '../shared/contracts.js'
 import { barbers, findScheduleDay, services, slotsByDay } from '../shared/catalog.js'
 import { getPool, hasDatabaseConfig } from './db.js'
+import { schemaVersion } from './migrations.js'
+import { authAttemptLimiter, hashPassword, nameFromEmail, normalizeEmail, validPassword, verifyPassword } from './password-auth.js'
 
 const app = express()
 app.disable('x-powered-by')
@@ -17,7 +20,7 @@ app.use('/api', (_req, res, next) => {
   next()
 })
 
-const SESSION_COOKIE = 'n13_google_session'
+const SESSION_COOKIE = 'n13_account_session'
 const CSRF_COOKIE = 'n13_auth_csrf'
 const NONCE_COOKIE = 'n13_auth_nonce'
 const SESSION_AGE_SECONDS = 60 * 60 * 24 * 30
@@ -29,6 +32,8 @@ type UserRow = RowDataPacket & {
   id: number | string
   email: string
   display_name: string
+  google_sub?: string | null
+  password_hash?: string | null
   created_at: Date | string
 }
 type HistoryRow = RowDataPacket & {
@@ -152,9 +157,23 @@ function requireDatabase(res: Response): boolean {
   return false
 }
 
+async function createSession(userId: string, req: Request, res: Response): Promise<void> {
+  const db = getPool()
+  const session = randomToken(32)
+  const expiresAt = new Date(Date.now() + SESSION_AGE_SECONDS * 1000).toISOString().replace('T', ' ').replace('Z', '')
+  await db.execute('DELETE FROM n13_sessions WHERE expires_at <= UTC_TIMESTAMP(3)')
+  await db.execute('INSERT INTO n13_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)', [hashToken(session), userId, expiresAt])
+  writeCookie(res, req, SESSION_COOKIE, session, { httpOnly: true, maxAge: SESSION_AGE_SECONDS })
+  clearCookie(res, req, NONCE_COOKIE, true)
+}
+
+function isDuplicateEmail(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'ER_DUP_ENTRY'
+}
+
 function requireUser(user: InternalUser | null, res: Response): user is InternalUser {
   if (user) return true
-  res.status(401).json({ error: 'Entre com sua conta Google para acessar esta área.', code: 'unauthorized' })
+  res.status(401).json({ error: 'Entre com sua conta Navalha 13 para acessar esta área.', code: 'unauthorized' })
   return false
 }
 
@@ -181,7 +200,14 @@ app.get('/_app/health', async (_req, res) => {
     return
   }
   try {
-    await getPool().query('SELECT 1')
+    const [rows] = await getPool().execute<Array<{ version: number } & RowDataPacket>>(
+      'SELECT version FROM n13_schema_migrations WHERE version = ? LIMIT 1',
+      [schemaVersion],
+    )
+    if (!rows.length) {
+      res.status(503).json({ ok: false, database: 'migration_required' })
+      return
+    }
     res.status(200).json({ ok: true })
   } catch {
     res.status(503).json({ ok: false, database: 'unavailable' })
@@ -208,7 +234,71 @@ app.get('/api/auth/me', async (req, res) => {
   }
 })
 
-app.post('/api/auth/google', async (req, res) => {
+app.post('/api/auth/register', authAttemptLimiter, async (req, res) => {
+  setPrivateNoStore(res)
+  if (!requireCsrf(req, res) || !requireDatabase(res)) return
+  const email = normalizeEmail(req.body?.email)
+  const password = req.body?.password
+  if (!email || !validPassword(password)) {
+    res.status(400).json({ error: 'Informe um e-mail válido e uma senha com pelo menos 12 caracteres (máximo de 128 bytes).', code: 'invalid_registration' })
+    return
+  }
+
+  try {
+    const passwordHash = await hashPassword(password)
+    const [result] = await getPool().execute<import('mysql2').ResultSetHeader>(
+      'INSERT INTO n13_app_users (google_sub, email, password_hash, display_name) VALUES (NULL, ?, ?, ?)',
+      [email, passwordHash, nameFromEmail(email)],
+    )
+    const userId = String(result.insertId)
+    await createSession(userId, req, res)
+    const [rows] = await getPool().execute<UserRow[]>(
+      'SELECT id, email, display_name, created_at FROM n13_app_users WHERE id = ? LIMIT 1',
+      [userId],
+    )
+    const user = rows[0]
+    if (!user) throw new Error('New account was not returned by the database')
+    res.status(201).json({ user: { id: String(user.id), email: user.email, name: user.display_name, createdAt: dateToIso(user.created_at) } satisfies AccountUser })
+  } catch (error) {
+    if (isDuplicateEmail(error)) {
+      res.status(409).json({ error: 'Este e-mail já possui uma conta. Entre ou use o acesso Google.', code: 'email_in_use' })
+      return
+    }
+    unavailable(res)
+  }
+})
+
+app.post('/api/auth/login', authAttemptLimiter, async (req, res) => {
+  setPrivateNoStore(res)
+  if (!requireCsrf(req, res) || !requireDatabase(res)) return
+  const email = normalizeEmail(req.body?.email)
+  const password = req.body?.password
+  if (!email || typeof password !== 'string' || password.length === 0 || Buffer.byteLength(password, 'utf8') > 128) {
+    res.status(400).json({ error: 'Informe um e-mail e uma senha válidos.', code: 'invalid_credentials' })
+    return
+  }
+
+  try {
+    const [rows] = await getPool().execute<UserRow[]>(
+      'SELECT id, email, display_name, password_hash, created_at FROM n13_app_users WHERE email = ? LIMIT 1',
+      [email],
+    )
+    const user = rows[0]
+    const passwordMatches = await verifyPassword(password, user?.password_hash)
+    if (!user || !passwordMatches) {
+      res.status(401).json({ error: 'E-mail ou senha incorretos. Se criou sua conta com Google, use essa opção.', code: 'invalid_login' })
+      return
+    }
+
+    const userId = String(user.id)
+    await createSession(userId, req, res)
+    res.json({ user: { id: userId, email: user.email, name: user.display_name, createdAt: dateToIso(user.created_at) } satisfies AccountUser })
+  } catch {
+    unavailable(res)
+  }
+})
+
+app.post('/api/auth/google', authAttemptLimiter, async (req, res) => {
   setPrivateNoStore(res)
   if (!requireCsrf(req, res) || !requireDatabase(res)) return
   const clientId = process.env.VITE_GOOGLE_CLIENT_ID
@@ -229,43 +319,68 @@ app.post('/api/auth/google', async (req, res) => {
     return
   }
   const payload = ticket.getPayload()
-  if (!payload?.sub || !payload.email || payload.email_verified !== true || payload.nonce !== expectedNonce) {
+  const email = normalizeEmail(payload?.email)
+  if (!payload?.sub || !email || payload.email_verified !== true || payload.nonce !== expectedNonce) {
     res.status(401).json({ error: 'Não foi possível verificar esta conta Google. Tente novamente.', code: 'invalid_google_token' })
     return
   }
 
   try {
     const db = getPool()
-    const [userResult] = await db.execute<import('mysql2').ResultSetHeader>(
-      `INSERT INTO n13_app_users (google_sub, email, display_name)
-       VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), email = VALUES(email), display_name = VALUES(display_name)`,
-      [payload.sub, payload.email, String(payload.name || payload.email).slice(0, 200)],
+    const [matches] = await db.execute<UserRow[]>(
+      'SELECT id, google_sub, email, display_name, created_at FROM n13_app_users WHERE google_sub = ? OR email = ? LIMIT 2',
+      [payload.sub, email],
     )
-    const userId = String(userResult.insertId)
-    const session = randomToken(32)
-    const expiresAt = new Date(Date.now() + SESSION_AGE_SECONDS * 1000).toISOString().replace('T', ' ').replace('Z', '')
-    await db.execute('DELETE FROM n13_sessions WHERE expires_at <= UTC_TIMESTAMP(3)')
-    await db.execute('INSERT INTO n13_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)', [hashToken(session), userId, expiresAt])
-    writeCookie(res, req, SESSION_COOKIE, session, { httpOnly: true, maxAge: SESSION_AGE_SECONDS })
-    clearCookie(res, req, NONCE_COOKIE, true)
+    const byGoogle = matches.find((row) => row.google_sub === payload.sub)
+    const byEmail = matches.find((row) => row.email === email)
+    if (byGoogle && byEmail && String(byGoogle.id) !== String(byEmail.id)) {
+      res.status(409).json({ error: 'Este e-mail já está associado a outra conta Navalha 13.', code: 'account_link_conflict' })
+      return
+    }
+
+    let userId: string
+    const displayName = String(payload.name || email.split('@')[0]).slice(0, 200)
+    if (byGoogle) {
+      await db.execute('UPDATE n13_app_users SET email = ?, display_name = ? WHERE id = ?', [email, displayName, byGoogle.id])
+      userId = String(byGoogle.id)
+    } else if (byEmail) {
+      if (byEmail.google_sub && byEmail.google_sub !== payload.sub) {
+        res.status(409).json({ error: 'Este e-mail já está associado a outra conta Navalha 13.', code: 'account_link_conflict' })
+        return
+      }
+      await db.execute('UPDATE n13_app_users SET google_sub = ?, display_name = ? WHERE id = ?', [payload.sub, displayName, byEmail.id])
+      userId = String(byEmail.id)
+    } else {
+      const [userResult] = await db.execute<import('mysql2').ResultSetHeader>(
+        'INSERT INTO n13_app_users (google_sub, email, display_name) VALUES (?, ?, ?)',
+        [payload.sub, email, displayName],
+      )
+      userId = String(userResult.insertId)
+    }
+
+    await createSession(userId, req, res)
     const [rows] = await db.execute<UserRow[]>('SELECT id, email, display_name, created_at FROM n13_app_users WHERE id = ? LIMIT 1', [userId])
     const user = rows[0]
     if (!user) throw new Error('Account upsert did not return a row')
     res.status(200).json({ user: { id: String(user.id), email: user.email, name: user.display_name, createdAt: dateToIso(user.created_at) } satisfies AccountUser })
   } catch {
-    res.status(401).json({ error: 'Falha ao entrar com Google. Verifique a configuração e tente novamente.', code: 'google_auth_failed' })
+    unavailable(res)
   }
 })
 
 app.post('/api/auth/logout', async (req, res) => {
   setPrivateNoStore(res)
-  if (!requireCsrf(req, res) || !requireDatabase(res)) return
+  if (!requireCsrf(req, res)) return
+  const token = cookieValue(req, SESSION_COOKIE)
+  clearCookie(res, req, SESSION_COOKIE, true)
+  clearCookie(res, req, NONCE_COOKIE, true)
+  if (!token) {
+    res.json({ ok: true })
+    return
+  }
+  if (!requireDatabase(res)) return
   try {
-    const token = cookieValue(req, SESSION_COOKIE)
-    if (token) await getPool().execute('DELETE FROM n13_sessions WHERE token_hash = ?', [hashToken(token)])
-    clearCookie(res, req, SESSION_COOKIE, true)
-    clearCookie(res, req, NONCE_COOKIE, true)
+    await getPool().execute('DELETE FROM n13_sessions WHERE token_hash = ?', [hashToken(token)])
     res.json({ ok: true })
   } catch {
     unavailable(res)
@@ -363,6 +478,27 @@ app.use('/api', (_req, res) => {
   setPrivateNoStore(res)
   res.status(404).json({ error: 'Rota da API não encontrada.', code: 'not_found' })
 })
+
+if (process.env.NODE_ENV === 'production') {
+  const webRoot = resolve(process.cwd(), 'dist')
+  app.use(express.static(webRoot, {
+    index: false,
+    maxAge: 0,
+    setHeaders(res, filePath) {
+      if (filePath.startsWith(resolve(webRoot, 'assets') + '/')) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate')
+      }
+    },
+  }))
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next()
+    if (/^\/(?:api|_app)(?:\/|$)/u.test(req.path) || extname(req.path)) return next()
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate')
+    res.sendFile(resolve(webRoot, 'index.html'), (error) => { if (error) next(error) })
+  })
+}
 
 const port = Number(process.env.PORT || 3001)
 app.listen(port, '0.0.0.0', () => {

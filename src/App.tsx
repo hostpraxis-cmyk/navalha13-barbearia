@@ -13,8 +13,8 @@ const pageTitles: Record<string, { title: string; description: string }> = {
   '/galeria': { title: 'Galeria | Navalha 13 Barbearia', description: 'Veja imagens da barbearia, dos cortes, da barba e das ferramentas.' },
   '/sobre': { title: 'Sobre | Navalha 13 Barbearia', description: 'Conheça a experiência e a casa demonstrativa da Navalha 13.' },
   '/contato': { title: 'Contato e localização | Navalha 13', description: 'Veja o endereço, telefone e horário demonstrativos da Navalha 13 Barbearia.' },
-  '/agendar': { title: 'Agendar | Navalha 13 Barbearia', description: 'Simule um horário de corte ou barba. Sem pagamento ou reserva real.' },
-  '/conta': { title: 'Minha conta | Navalha 13 Barbearia', description: 'Entre com Google para salvar e consultar suas simulações da Navalha 13.' },
+  '/agendar': { title: 'Agendar | Navalha 13 Barbearia', description: 'Entre na sua conta para salvar uma simulação de corte ou barba. Sem pagamento ou reserva real.' },
+  '/conta': { title: 'Minha conta | Navalha 13 Barbearia', description: 'Crie ou acesse sua conta Navalha 13 com e-mail e senha para consultar seu histórico de simulações.' },
   '/privacidade': { title: 'Privacidade e cookies | Navalha 13', description: 'Entenda o consentimento de cookies desta demonstração e altere suas preferências.' },
 }
 

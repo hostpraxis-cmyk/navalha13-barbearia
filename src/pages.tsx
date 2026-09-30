@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import type { AccountUser } from '../shared/contracts'
 import { barbers, images, scheduleDays, services, slotsByDay } from './data'
 import { ApiError, createSimulation, getCurrentUser } from './api'
 
@@ -67,13 +68,26 @@ export function AboutPage() {
 export function BookingPage() {
   const [searchParams] = useSearchParams()
   const serviceFromLink = services.some((service) => service.id === searchParams.get('servico')) ? searchParams.get('servico') ?? '' : ''
-  const [booking, setBooking] = useState({ serviceId: serviceFromLink, barberId: '', dayId: scheduleDays[0]?.id ?? 'ter', time: '', name: '', whatsapp: '' })
+  const [booking, setBooking] = useState({ serviceId: serviceFromLink, barberId: '', dayId: scheduleDays[0]?.id ?? 'ter', time: '' })
+  const [accountUser, setAccountUser] = useState<AccountUser | null>(null)
+  const [accountLoading, setAccountLoading] = useState(true)
+  const [accountError, setAccountError] = useState('')
   const [message, setMessage] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [savedToHistory, setSavedToHistory] = useState(false)
-  const [localOnlyNote, setLocalOnlyNote] = useState('')
   const [loadingSlots, setLoadingSlots] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  useEffect(() => {
+    let active = true
+    void getCurrentUser().then((current) => {
+      if (active) setAccountUser(current.user)
+    }).catch((requestError: unknown) => {
+      if (active) setAccountError(requestError instanceof Error ? requestError.message : 'Não foi possível verificar sua conta.')
+    }).finally(() => {
+      if (active) setAccountLoading(false)
+    })
+    return () => { active = false }
+  }, [])
   useEffect(() => {
     setBooking((current) => current.serviceId === serviceFromLink ? current : { ...current, serviceId: serviceFromLink, time: '' })
     setConfirmation('')
@@ -87,75 +101,64 @@ export function BookingPage() {
   const selectedService = services.find((service) => service.id === booking.serviceId)
   const selectedBarber = barbers.find((barber) => barber.id === booking.barberId)
   const selectedDay = scheduleDays.find((day) => day.id === booking.dayId)
-  const phoneDigits = booking.whatsapp.replace(/\D/g, '')
-  const completedSteps = [booking.serviceId, booking.barberId, booking.time, booking.name.trim().length >= 2 && phoneDigits.length >= 10].filter(Boolean).length
+  const completedSteps = [booking.serviceId, booking.barberId, booking.time, accountUser].filter(Boolean).length
   const update = (field: keyof typeof booking, value: string) => { setBooking((current) => ({ ...current, [field]: value })); setMessage('') }
   const selectDay = (dayId: string) => { setBooking((current) => ({ ...current, dayId, time: '' })); setMessage('') }
-  const formatPhone = (value: string) => {
-    const digits = value.replace(/\D/g, '').slice(0, 11)
-    if (digits.length <= 2) return digits
-    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
-  }
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (submitting) return
+    if (!accountUser) return setMessage('Entre na sua conta antes de salvar esta simulação.')
     if (loadingSlots) return setMessage('Aguarde o carregamento dos horários demonstrativos.')
     if (!booking.serviceId || !booking.barberId || !booking.dayId || !booking.time) return setMessage('Escolha serviço, barbeiro, data e horário antes de confirmar.')
-    if (booking.name.trim().length < 2) return setMessage('Informe seu nome para continuar.')
-    if (phoneDigits.length < 10) return setMessage('Informe um WhatsApp válido com DDD.')
     if (!selectedDay) return setMessage('Atualize a página para carregar os próximos dias demonstrativos.')
     setMessage('')
-    setLocalOnlyNote('')
     setSubmitting(true)
     try {
       const current = await getCurrentUser()
-      if (current.user) {
-        const record = await createSimulation({
-          serviceId: booking.serviceId,
-          barberId: booking.barberId,
-          dayId: selectedDay.id,
-          date: selectedDay.date,
-          time: booking.time,
-        })
-        setConfirmation(`N13-${record.id.slice(0, 6).toUpperCase()}`)
-        setSavedToHistory(true)
-      } else {
-        await new Promise((resolve) => window.setTimeout(resolve, 950))
-        setConfirmation(`N13-${Math.floor(1000 + Math.random() * 9000)}-${booking.dayId.toUpperCase()}`)
-        setSavedToHistory(false)
+      if (!current.user) {
+        setAccountUser(null)
+        setMessage('Sua sessão terminou. Entre novamente para salvar no histórico.')
+        return
       }
+      setAccountUser(current.user)
+      const record = await createSimulation({
+        serviceId: booking.serviceId,
+        barberId: booking.barberId,
+        dayId: selectedDay.id,
+        date: selectedDay.date,
+        time: booking.time,
+      })
+      setConfirmation(`N13-${record.id.slice(0, 6).toUpperCase()}`)
+      setSavedToHistory(true)
     } catch (submitError) {
-      if (submitError instanceof ApiError && (submitError.status === 0 || submitError.status === 503)) {
-        setLocalOnlyNote('O serviço da conta está indisponível; esta simulação ficará somente nesta tela e não será salva no histórico.')
-        await new Promise((resolve) => window.setTimeout(resolve, 950))
-        setConfirmation(`N13-${Math.floor(1000 + Math.random() * 9000)}-${booking.dayId.toUpperCase()}`)
-        setSavedToHistory(false)
-      } else {
-        setMessage(submitError instanceof Error ? submitError.message : 'Não foi possível concluir a simulação. Tente novamente.')
-      }
+      if (submitError instanceof ApiError && submitError.status === 401) setAccountUser(null)
+      setMessage(submitError instanceof Error ? submitError.message : 'Não foi possível salvar a simulação. Tente novamente.')
     } finally {
       setSubmitting(false)
     }
   }
-  const restart = () => { setBooking({ serviceId: '', barberId: '', dayId: scheduleDays[0]?.id ?? 'ter', time: '', name: '', whatsapp: '' }); setConfirmation(''); setSavedToHistory(false); setLocalOnlyNote(''); setMessage(''); setSubmitting(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  const restart = () => { setBooking({ serviceId: '', barberId: '', dayId: scheduleDays[0]?.id ?? 'ter', time: '' }); setConfirmation(''); setSavedToHistory(false); setMessage(''); setSubmitting(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  const bookingPath = `/agendar${searchParams.toString() ? `?${searchParams.toString()}` : ''}`
+  const accountPath = `/conta?redirect=${encodeURIComponent(bookingPath)}`
 
   return <div className="inner-page"><PageIntro number="05" title="Seu horário." accent="Sem compromisso." copy="Escolha o serviço, o barbeiro e um horário para concluir a demonstração. Nenhum pagamento ou reserva real será feito." /><section className="booking-section booking-page-section"><div className="booking-bg" aria-hidden="true"><span>N13</span></div><div className="container booking-layout"><div className="booking-intro" data-reveal><p className="eyebrow">Agenda demonstrativa</p><h2>Marque o<br /><em>seu corte.</em></h2><p>São quatro passos simples. Os horários, equipe e preços desta agenda são fictícios.</p><div className="booking-disclaimer"><span><CheckIcon /></span> Nenhum pagamento ou cobrança será feito.</div><div className="booking-progress" aria-label={`${completedSteps} de 4 etapas concluídas`}><div className="progress-line"><i style={{ width: `${(completedSteps / 4) * 25}%` }} /></div><span>{completedSteps}/4 etapas</span></div></div>
     <div className="booking-panel" data-reveal>
-      {confirmation ? (
+      {accountLoading ? <div className="account-loading booking-account-loading" role="status" aria-live="polite"><span className="loading-spinner" aria-hidden="true" /><span>Verificando sua conta...</span><span className="account-shimmer" /></div> : !accountUser ? (
+        <div className="booking-auth-gate"><span className="account-seal" aria-hidden="true">N13</span><p className="eyebrow">Acesso à agenda</p><h3>Entre para continuar.</h3><p>Para salvar uma simulação e ver seu histórico, entre ou crie uma conta Navalha 13 com e-mail e senha.</p>{accountError && <p className="form-message" role="alert">{accountError}</p>}<Link className="button button-primary button-full" to={accountPath}>Entrar ou criar conta <ArrowIcon /></Link><p className="demo-note">Você volta para esta agenda depois do login. Nenhum horário é reservado de verdade.</p></div>
+      ) : confirmation ? (
         <div className="confirmation" role="status" aria-live="polite">
           <div className="confirmation-icon"><CheckIcon /></div>
           <p className="eyebrow">Simulação concluída</p>
           <h3>Seu corte, no papel.</h3>
-          <p className="confirmation-copy">{savedToHistory ? `A simulação ficou salva no histórico da sua conta, ${booking.name.trim().split(' ')[0]}. Nenhum horário foi reservado de verdade.` : `Tudo certo, ${booking.name.trim().split(' ')[0]}. Esta escolha ficou apenas nesta demonstração e não foi enviada nem salva.`}</p>
+          <p className="confirmation-copy">{savedToHistory ? `A simulação ficou salva no histórico da sua conta, ${accountUser.name.split(' ')[0]}. Nenhum horário foi reservado de verdade.` : 'A escolha demonstrativa não foi salva no histórico.'}</p>
           <div className="protocol"><span>PROTOCOLO DEMO</span><strong>{confirmation}</strong></div>
           <dl className="confirmation-details">
             <div><dt>Serviço</dt><dd>{selectedService?.name}</dd></div>
             <div><dt>Barbeiro</dt><dd>{selectedBarber?.name}</dd></div>
             <div><dt>Horário demonstrativo</dt><dd>{selectedDay?.label} · {booking.time}</dd></div>
           </dl>
-          <p className={localOnlyNote ? 'demo-note booking-local-warning' : 'demo-note'}>{localOnlyNote || 'Não é uma reserva real. Nenhum pagamento ou contato foi feito.'}</p>
-          {savedToHistory ? <Link className="button button-ghost button-full" to="/conta">Ver meu histórico <ArrowIcon /></Link> : <Link className="button button-ghost button-full" to="/conta">Entrar com Google e salvar próximas simulações <ArrowIcon /></Link>}
+          <p className="demo-note">Não é uma reserva real. Nenhum pagamento ou contato foi feito.</p>
+          <Link className="button button-ghost button-full" to="/conta">Ver meu histórico <ArrowIcon /></Link>
           <button className="button button-primary button-full" type="button" onClick={restart}>Simular outro horário <ArrowIcon /></button>
         </div>
       ) : (
@@ -164,13 +167,13 @@ export function BookingPage() {
       <fieldset className="booking-step"><legend><span>01</span> Escolha seu serviço</legend><div className="choice-grid service-choice-grid">{services.map((service) => <button className={`choice-card ${booking.serviceId === service.id ? 'is-selected' : ''}`} type="button" key={service.id} onClick={() => update('serviceId', service.id)} aria-pressed={booking.serviceId === service.id}><strong>{service.name}</strong><span>{service.duration}</span><em>{service.price}</em></button>)}</div></fieldset>
       <fieldset className="booking-step"><legend><span>02</span> Escolha o barbeiro</legend><div className="barber-list">{barbers.map((barber) => <button className={`barber-card ${booking.barberId === barber.id ? 'is-selected' : ''}`} type="button" key={barber.id} onClick={() => update('barberId', barber.id)} aria-pressed={booking.barberId === barber.id}><span className={`barber-avatar ${barber.tone}`}>{barber.initials}</span><span><strong>{barber.name}</strong><em>{barber.specialty}</em></span><i>{booking.barberId === barber.id ? <CheckIcon /> : '+'}</i></button>)}</div></fieldset>
       <fieldset className="booking-step"><legend><span>03</span> Escolha o dia e horário</legend><div className="day-list" aria-label="Escolher data">{scheduleDays.map((day) => <button className={`day-card ${booking.dayId === day.id ? 'is-selected' : ''}`} type="button" key={day.id} onClick={() => selectDay(day.id)} aria-pressed={booking.dayId === day.id}><span>{day.week}</span><strong>{day.day}</strong><em>{day.label}</em></button>)}</div><div className="time-meta"><span>Disponibilidade demonstrativa</span><span><i className="time-key available" /> livre <i className="time-key busy" /> ocupado</span></div><div className="time-grid" aria-busy={loadingSlots}>{loadingSlots ? <div className="slot-loading" role="status" aria-live="polite"><span className="loading-spinner" aria-hidden="true" /><span className="slot-loading-copy"><strong>Carregando horários...</strong><small>Conferindo a agenda demonstrativa para {selectedDay?.label.toLowerCase()}.</small></span><span className="loading-line" aria-hidden="true" /></div> : slotsByDay[booking.dayId].map((slot) => <button className={`time-slot ${booking.time === slot.time ? 'is-selected' : ''} ${slot.occupied ? 'is-occupied' : ''}`} type="button" key={slot.time} disabled={slot.occupied} onClick={() => update('time', slot.time)} aria-pressed={booking.time === slot.time}>{slot.time}</button>)}</div></fieldset>
-      <fieldset className="booking-step contact-step"><legend><span>04</span> Seus dados demonstrativos</legend><div className="contact-grid"><label>Seu nome<input type="text" value={booking.name} onChange={(event) => update('name', event.target.value)} placeholder="Ex.: Rafael Martins" autoComplete="name" /></label><label>Seu WhatsApp<input type="tel" value={booking.whatsapp} onChange={(event) => update('whatsapp', formatPhone(event.target.value))} placeholder="(11) 99999-9999" autoComplete="tel" inputMode="numeric" /></label></div></fieldset>
-      <p className="booking-data-note">Seu nome e WhatsApp ficam só nesta tela. Não são enviados nem salvos no servidor.</p>
+      <fieldset className="booking-step contact-step"><legend><span>04</span> Sua conta</legend><div className="booking-account-summary"><span className="account-avatar" aria-hidden="true">{accountUser.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || 'N13'}</span><div><strong>{accountUser.name}</strong><span>{accountUser.email}</span><small>Esta simulação ficará no histórico desta conta.</small></div></div></fieldset>
+      <p className="booking-data-note">Não pedimos nome ou WhatsApp de novo. O histórico fica ligado à conta com que você entrou.</p>
       <div className="booking-summary" aria-live="polite"><div><span>Serviço</span><strong>{selectedService?.name ?? 'Escolha um serviço'}</strong></div><div><span>Quando</span><strong>{booking.time ? `${selectedDay?.label} · ${booking.time}` : 'Selecione dia e horário'}</strong></div><span className="summary-price">{selectedService?.price ?? '—'}</span></div>
       {message && <p className="form-message" role="alert">{message}</p>}
       <button className="button button-primary button-full" type="submit" disabled={submitting || loadingSlots} aria-busy={submitting}>{submitting ? <><span className="loading-spinner" aria-hidden="true" /> Salvando sua simulação...</> : <>Concluir simulação <ArrowIcon /></>}</button>
       {submitting && <p className="booking-submit-status" role="status" aria-live="polite">Carregando a confirmação demonstrativa. Nenhum horário real será reservado.</p>}
-      <p className="form-hint">Sem cobrança, pagamento, mensagem, contato ou reserva real.</p>
+      <p className="form-hint">Sem pagamento, cobrança ou contato com a barbearia. É uma simulação, não uma reserva real.</p>
         </form>
       )}
     </div></div></section></div>
@@ -178,9 +181,9 @@ export function BookingPage() {
 
 export function PrivacyPage({ onManageCookies }: { onManageCookies: () => void }) {
   return <div className="inner-page"><PageIntro number="09" title="Privacidade." accent="Você escolhe." copy="Veja como cookies, login e histórico funcionam nesta demonstração." /><section className="container privacy-content">
-    <article data-reveal><h2>Cookies necessários</h2><p>Um cookie próprio lembra sua escolha de consentimento. Ao entrar com Google, a Navalha 13 também cria uma sessão segura para manter sua conta conectada; ela é HttpOnly e não guarda sua senha Google.</p></article>
-    <article data-reveal><h2>Login Google</h2><p>O botão oficial do Google é carregado somente nesta página de conta. O servidor valida o token de identidade; o site recebe apenas dados básicos do perfil necessários à conta. A Navalha 13 não pede nem recebe sua senha.</p></article>
-    <article data-reveal><h2>Seu histórico</h2><p>Depois de entrar, as escolhas de serviço, barbeiro, dia e horário podem ficar salvas na sua conta como simulações. Não são reservas reais. Nome e WhatsApp digitados na agenda permanecem no navegador e não são salvos. Você pode apagar seu histórico ou toda a conta na página Minha conta.</p><Link className="text-link" to="/conta">Ir para Minha conta <ArrowIcon /></Link></article>
+    <article data-reveal><h2>Cookies necessários</h2><p>Um cookie próprio lembra sua escolha de consentimento. Ao entrar, a Navalha 13 cria uma sessão segura HttpOnly para manter sua conta conectada. A senha nunca é guardada em texto puro; o servidor salva somente um hash protegido.</p></article>
+    <article data-reveal><h2>Conta do site</h2><p>Você pode criar uma conta com e-mail e senha; a senha precisa ter pelo menos 12 caracteres e é protegida por hash com salt. O Google é uma alternativa opcional quando configurado, usando o botão oficial — a Navalha 13 nunca pede sua senha Google. Nesta versão não há confirmação nem recuperação de senha por e-mail. Não use uma senha que você já utiliza em outro serviço.</p></article>
+    <article data-reveal><h2>Seu histórico</h2><p>Para simular um horário, é necessário entrar na conta. As escolhas de serviço, barbeiro, dia e horário ficam associadas ao seu usuário e aparecem no histórico como simulações, não reservas reais. Não pedimos WhatsApp nem fazemos contato. Você pode apagar seu histórico ou toda a conta na página Minha conta.</p><Link className="text-link" to="/conta">Ir para Minha conta <ArrowIcon /></Link></article>
     <article data-reveal><h2>Cookies opcionais</h2><p>Você pode aceitar ou rejeitar a categoria opcional de analytics. Esta demonstração não instala analytics nem rastreadores de anúncios; sua escolha fica salva apenas para respeitar a preferência.</p></article>
     <article data-reveal><h2>Como mudar sua escolha</h2><p>Reabra as preferências a qualquer momento pelo botão abaixo. Para remover informações da conta, use os controles de exclusão da própria página Minha conta.</p><button className="button button-primary" type="button" onClick={onManageCookies}>Configurar cookies <ArrowIcon /></button></article>
     <p className="demo-note">Navalha 13 é um projeto demonstrativo. Loja, contatos, profissionais, valores, horários e simulações são fictícios; não há pagamentos nem atendimentos reais.</p>

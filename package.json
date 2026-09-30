@@ -9,29 +9,30 @@
     "build": "pnpm build:web && pnpm build:server",
     "build:web": "tsc -b && vite build",
     "build:server": "tsc -p tsconfig.server.json",
-    "start": "node dist-server/server/index.js",
+    "start": "node dist-server/server/migrate.js && node dist-server/server/index.js",
     "db:migrate": "tsx server/migrate.ts",
     "preview": "vite preview --host 0.0.0.0 --port 3000"
   },
   "dependencies": {
-    "@fontsource/cormorant-garamond": "^5.3.0",
-    "@fontsource/dm-sans": "^5.3.0",
-    "@vitejs/plugin-react": "^4.4.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
     "google-auth-library": "^11.1.0",
-    "mysql2": "^3.24.4",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-router-dom": "^6.30.6",
-    "vite": "^6.3.0"
+    "mysql2": "^3.24.4"
   },
   "devDependencies": {
+    "@fontsource/cormorant-garamond": "^5.3.0",
+    "@fontsource/dm-sans": "^5.3.0",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.3",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.7.0",
     "concurrently": "^10.0.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^6.30.6",
     "tsx": "^4.23.15",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vite": "^6.4.3"
   }
 }

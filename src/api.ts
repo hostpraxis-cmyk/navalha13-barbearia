@@ -101,6 +101,22 @@ export async function exchangeGoogleCredential(credential: string): Promise<Acco
   return result.user
 }
 
+export async function registerAccount(email: string, password: string): Promise<AccountUser> {
+  const result = await request<{ user: AccountUser }>('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  })
+  return result.user
+}
+
+export async function loginWithPassword(email: string, password: string): Promise<AccountUser> {
+  const result = await request<{ user: AccountUser }>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  })
+  return result.user
+}
+
 export function getHistory(): Promise<HistoryResponse> {
   return request<HistoryResponse>('/api/history')
 }

@@ -1,10 +1,11 @@
-export const schemaVersion = 1
+export const schemaVersion = 2
 
 export const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS n13_app_users (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    google_sub VARCHAR(255) NOT NULL UNIQUE,
-    email VARCHAR(320) NOT NULL,
+    google_sub VARCHAR(255) NULL UNIQUE,
+    email VARCHAR(320) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NULL,
     display_name VARCHAR(200) NOT NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
