@@ -1,4 +1,8 @@
 node_modules/
 dist/
+dist-server/
 *.tsbuildinfo
 .vite/
+.env
+.env.*
+!.env.example

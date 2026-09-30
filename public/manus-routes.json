@@ -5,7 +5,9 @@
     { "path": "/barbeiros", "title": "Barbeiros | Navalha 13" },
     { "path": "/galeria", "title": "Galeria | Navalha 13" },
     { "path": "/sobre", "title": "Sobre | Navalha 13" },
+    { "path": "/contato", "title": "Contato | Navalha 13" },
     { "path": "/agendar", "title": "Agendar | Navalha 13" },
+    { "path": "/conta", "title": "Minha conta | Navalha 13" },
     { "path": "/privacidade", "title": "Privacidade e cookies | Navalha 13" }
   ]
 }

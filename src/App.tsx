@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { BrowserRouter, Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AboutPage, ArrowIcon, BarbersPage, BookingPage, BrandMark, GalleryPage, HomePage, PrivacyPage, ServicesPage } from './pages'
+import { ContactPage } from './ContactPage'
+import { AccountPage } from './AccountPage'
 
 type CookieConsent = { analytics: boolean }
 
@@ -10,7 +12,9 @@ const pageTitles: Record<string, { title: string; description: string }> = {
   '/barbeiros': { title: 'Barbeiros | Navalha 13 Barbearia', description: 'Conheça a equipe e as especialidades demonstrativas da Navalha 13.' },
   '/galeria': { title: 'Galeria | Navalha 13 Barbearia', description: 'Veja imagens da barbearia, dos cortes, da barba e das ferramentas.' },
   '/sobre': { title: 'Sobre | Navalha 13 Barbearia', description: 'Conheça a experiência e a casa demonstrativa da Navalha 13.' },
+  '/contato': { title: 'Contato e localização | Navalha 13', description: 'Veja o endereço, telefone e horário demonstrativos da Navalha 13 Barbearia.' },
   '/agendar': { title: 'Agendar | Navalha 13 Barbearia', description: 'Simule um horário de corte ou barba. Sem pagamento ou reserva real.' },
+  '/conta': { title: 'Minha conta | Navalha 13 Barbearia', description: 'Entre com Google para salvar e consultar suas simulações da Navalha 13.' },
   '/privacidade': { title: 'Privacidade e cookies | Navalha 13', description: 'Entenda o consentimento de cookies desta demonstração e altere suas preferências.' },
 }
 
@@ -65,6 +69,8 @@ const navigation = [
   { to: '/barbeiros', label: 'Barbeiros' },
   { to: '/galeria', label: 'Galeria' },
   { to: '/sobre', label: 'A casa' },
+  { to: '/contato', label: 'Contato' },
+  { to: '/conta', label: 'Minha conta' },
 ]
 
 function SiteHeader() {
@@ -73,7 +79,7 @@ function SiteHeader() {
 }
 
 function SiteFooter({ onManageCookies }: { onManageCookies: () => void }) {
-  return <footer className="site-footer container"><Link className="brand footer-brand" to="/"><BrandMark /><span><strong>NAVALHA</strong><em>13</em></span></Link><p>© 2026 Navalha 13. Barbearia demonstrativa.</p><div className="footer-links"><Link to="/privacidade">Privacidade e cookies</Link><button type="button" onClick={onManageCookies}>Configurar cookies</button><Link to="/agendar">Ver agenda</Link></div></footer>
+  return <footer className="site-footer container"><Link className="brand footer-brand" to="/"><BrandMark /><span><strong>NAVALHA</strong><em>13</em></span></Link><p>© 2026 Navalha 13. Barbearia demonstrativa.</p><div className="footer-links"><Link to="/contato">Contato</Link><Link to="/conta">Minha conta</Link><Link to="/privacidade">Privacidade e cookies</Link><button type="button" onClick={onManageCookies}>Configurar cookies</button><Link to="/agendar">Ver agenda</Link></div></footer>
 }
 
 function CookieNotice({ forceOpen, onClose }: { forceOpen: boolean; onClose: () => void }) {
@@ -127,7 +133,7 @@ function CookieNotice({ forceOpen, onClose }: { forceOpen: boolean; onClose: () 
 function AppRoutes({ onManageCookies }: { onManageCookies: () => void }) {
   const navigate = useNavigate()
   const book = (serviceId?: string) => navigate(serviceId ? `/agendar?servico=${encodeURIComponent(serviceId)}` : '/agendar')
-  return <Routes><Route path="/" element={<HomePage />} /><Route path="/servicos" element={<ServicesPage onBook={book} />} /><Route path="/barbeiros" element={<BarbersPage onBook={book} />} /><Route path="/galeria" element={<GalleryPage />} /><Route path="/sobre" element={<AboutPage />} /><Route path="/agendar" element={<BookingPage />} /><Route path="/privacidade" element={<PrivacyPage onManageCookies={onManageCookies} />} /><Route path="*" element={<main className="container not-found"><p className="eyebrow">404 — página não encontrada</p><h1>Esta cadeira<br /><em>está vazia.</em></h1><Link className="button button-primary" to="/">Voltar ao início <ArrowIcon /></Link></main>} /></Routes>
+  return <Routes><Route path="/" element={<HomePage />} /><Route path="/servicos" element={<ServicesPage onBook={book} />} /><Route path="/barbeiros" element={<BarbersPage onBook={book} />} /><Route path="/galeria" element={<GalleryPage />} /><Route path="/sobre" element={<AboutPage />} /><Route path="/contato" element={<ContactPage />} /><Route path="/agendar" element={<BookingPage />} /><Route path="/conta" element={<AccountPage />} /><Route path="/privacidade" element={<PrivacyPage onManageCookies={onManageCookies} />} /><Route path="*" element={<main className="container not-found"><p className="eyebrow">404 — página não encontrada</p><h1>Esta cadeira<br /><em>está vazia.</em></h1><Link className="button button-primary" to="/">Voltar ao início <ArrowIcon /></Link></main>} /></Routes>
 }
 
 function AppContent() {

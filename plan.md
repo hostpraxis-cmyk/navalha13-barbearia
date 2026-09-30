@@ -1,61 +1,41 @@
 # Plano de implementação — Navalha 13 Barbearia
 
 ## Objetivo
-Transformar a landing em um site de barbearia com páginas distintas e URLs próprias — Início, Serviços, Barbeiros, Galeria, Sobre, Agendar e Privacidade — sem esconder tudo em uma única página. Incluir um aviso de cookies que permita aceitar, rejeitar e personalizar cookies opcionais, salvando a escolha no navegador. Preservar a reserva como simulação, sem cobrança, pagamento ou agendamento real.
+Entregar um site multipágina, reconhecivelmente barbearia clássica, com animações marcantes e acessíveis, agenda demonstrativa com estados de carregamento, cookies configuráveis, página de contato fictícia e uma conta com Google Sign-In real e histórico persistente de simulações. Não criar pagamentos, cobranças ou reservas reais.
 
-## Arquitetura escolhida
-- **Frontend:** React + TypeScript + Vite e React Router para navegação por páginas, URL direta, botões voltar/avançar e histórico do navegador.
-- **Entrega:** arquivos estáticos do Vite com fallback SPA configurado para as páginas; conteúdo renderizado no navegador.
-- **Rotas públicas:** `/`, `/servicos`, `/barbeiros`, `/galeria`, `/sobre`, `/agendar` e `/privacidade`; manter `public/manus-routes.json` em sincronia.
-- **Metadados:** título e descrição de página atualizados por rota no cliente; metadata geral inicial em `index.html`. Não inventar canonical ou sitemap com URL de produção não confirmada.
-- **Consentimento:** gravar `n13_cookie_consent` como cookie first-party com escolhas para necessário (sempre ativo) e analytics opcional. Nenhum script/serviço de rastreamento é instalado nesta demonstração; a preferência opcional é registrada sem ativar terceiros.
-- **Estado:** serviço pode ser pré-selecionado via query string `/agendar?servico=...`; os dados e horários são fictícios e o formulário gera um protocolo somente no cliente.
-- **Desenvolvimento:** Vite na porta 3000. **Publicação:** build Manus estático em `dist`; `pnpm build:github-pages` prepara o projeto sob `/navalha13-barbearia/`, grava `404.html` e gera uma entrada HTML estática para cada rota no GitHub Pages.
+## Arquitetura aprovada
+Frontend React + TypeScript + Vite + React Router servido como assets estáticos. API Node.js + Express para `/api/*` na mesma origem. Banco MySQL gerenciado WebDev com tabelas próprias para contas, sessões opacas e histórico demonstrativo; migrações aditivas. O login usa o botão oficial Google Identity Services; o ID token é enviado por HTTPS e validado no servidor por `google-auth-library` (`verifyIdToken`, audiência igual ao Web Client ID). A chave estável do usuário é `sub`, nunca o e-mail. Não implementar login Manus, senha, ou autenticação simulada.
+
+A sessão usa o cookie próprio `n13_google_session`, `HttpOnly`, `Secure` em HTTPS e `SameSite=None` quando necessário para o Preview incorporado. No MySQL guarda-se somente o hash de um token aleatório. A inicialização de login emite CSRF e nonce; o servidor compara o CSRF em double-submit e valida o nonce assinado pelo Google. Toda API com dados pessoais é `private, no-store`; não há CORS permissivo.
+
+O proprietário fornecerá somente o Web Client ID pelo fluxo protegido de segredos, sem chat, Git ou logs. O Client ID será embutido no bundle público do GIS, como previsto pelo fluxo; o proprietário também deve autorizar as origens JavaScript do Preview e do domínio publicado no Google Cloud Console. Este fluxo de ID token não precisa de um OAuth client secret.
+
+Qualquer visitante pode concluir uma simulação local sem entrar. Após login, simulações concluídas são persistidas no histórico da própria conta. O backend registra serviço, barbeiro, data/horário demonstrativos e identificador de usuário; não persiste WhatsApp do formulário, não bloqueia horário, não envia mensagens, não confirma atendimento real e não cobra. Histórico e página Minha Conta identificam todos os registros como simulações. O usuário pode apagar histórico ou conta com confirmação. Não armazena o ID token Google.
+
+Preservar o consentimento first-party existente, sem analytics. Explicar que o Google Identity Services é carregado para autenticação, que a sessão define um cookie necessário e que o histórico só se salva após o login. Contato permanece totalmente fictício: `(11) 0000-0013`, `Rua da Navalha, 13`, `Vila do Corte · São Paulo, SP`, com aviso de que loja e atendimento não existem.
+
+## Decisão de hospedagem aprovada
+O usuário autorizou em 30/09/2026 habilitar `features.server: true` e o banco gerenciado (habilitações unidirecionais), migrar do GitHub Pages para hospedagem WebDev e manter o código no GitHub como remoto canônico. A URL pública final será somente a retornada pelo WebDev.
+
+## Publicação e roteamento
+Publicação híbrida: build estático Vite em `dist` mais container Node para API. Em ordem: `/_app/*` → server; `/api/*` → server com resposta sem cache compartilhado; `/assets/*` → static com cache longo para assets versionados; `/*` → static com fallback SPA. O container escuta no `PORT` fornecido e tem health path sem autenticação `/_app/health`. Instalação reproduzível e fixada por `packageManager`/lockfile; não embutir segredos privados em imagem ou assets.
+
+## Páginas e experiência
+Rotas públicas: `/`, `/servicos`, `/barbeiros`, `/galeria`, `/sobre`, `/contato`, `/agendar`, `/conta` e `/privacidade`. A conta oferece Google Sign-In, dados mínimos, histórico persistente de simulações, logout e controles para apagar dados. No agendamento, visitante sem sessão conclui uma simulação local; usuário conectado salva via API e pode abrir seu histórico. Se API/DB ficar indisponível, a simulação continua local e a tela avisa que não será salva. Em nenhum estado chamar a simulação de reserva real.
 
 ## Organização
-- `index.html`: metadata inicial e mount React.
-- `src/main.tsx`: bootstrap React e fontes servidas localmente no bundle.
-- `src/App.tsx`: shell global, header/menu, rodapé, efeitos de rota e consentimento de cookies.
-- `src/pages.tsx`: páginas Início, Serviços, Barbeiros, Galeria, Sobre, Agendar e Privacidade.
-- `src/data.ts`: serviços, profissionais, URLs-base, horários e depoimentos demonstrativos.
-- `public/images/`: fotografias locais para não depender de endereços do preview ou armazenamento externo.
-- `src/styles.css`: identidade premium de barbearia, responsividade, estados de rota, banner de cookies e animações com redução de movimento.
-- `public/manus-routes.json`: inventário completo das páginas.
-- `public/robots.txt`, `public/favicon.svg`, `app.config.ts`: documentos públicos e identidade existente.
+- `src/App.tsx`: shell, rotas, navegação, metadados e consentimento.
+- `src/pages.tsx`, `src/ContactPage.tsx`, `src/AccountPage.tsx`: páginas.
+- `src/api.ts`: chamadas same-origin com renovação do desafio CSRF/nonce.
+- `src/styles.css`: identidade premium de barbearia e motion acessível.
+- `shared/catalog.ts`, `shared/contracts.ts`: catálogo e contratos JSON comuns.
+- `server/index.ts`: Express, health, autenticação, sessões e histórico.
+- `server/db.ts`, `server/migrations.ts`, `server/migrate.ts`: conexão TLS MySQL e migrações.
+- `Dockerfile`, manifestos pnpm e lockfile: build/runtime.
+- `public/manus-routes.json`: apenas rotas públicas de páginas, nunca endpoints.
 
-## Experiência do produto
-1. Cada página tem conteúdo focado e navegação que leva a rotas diferentes, com menu móvel.
-2. Início apresenta a Navalha 13, destaques e caminhos para as outras páginas, em vez de reunir todas as seções em um longo scroll.
-3. Serviços lista corte, barba e combo com preço/duração e botões que abrem a agenda já com serviço selecionado.
-4. Barbeiros mostra profissionais e especialidades; Galeria mostra os visuais; Sobre apresenta a casa e informações demonstrativas.
-5. Agendar conserva as quatro etapas, bloqueia horários ocupados, valida nome e WhatsApp, mostra resumo e gera protocolo demonstrativo. Nenhum pagamento, mensagem ou reserva real acontece.
-6. Aviso de cookies aparece antes de uma escolha salva; visitante aceita opcionais, rejeita opcionais ou personaliza. Uma página de privacidade explica a escolha e a ausência de rastreadores.
+## Privacidade, segurança e limites
+Verificar tokens no servidor; nunca confiar em nome/e-mail vindos do navegador. Consultas do histórico sempre usam o `user_id` da sessão autenticada. Cookies seguros, CSRF, nonce Google, validação de payload e respostas privadas sem cache. Sem pagamentos, WhatsApp, e-mail ou calendário de produção. Nomes, valores e horários da loja são demonstrativos.
 
-## Deployment e performance
-O conteúdo permanece uma aplicação pública estática, sem API, banco, login ou recurso de servidor. `pnpm build` gera `dist`; no Manus, `/assets/*` atende recursos versionados e `/*` usa o fallback estático já declarado. O build GitHub Pages usa a base `/navalha13-barbearia/`, fontes e imagens locais, uma pasta `index.html` por rota e `404.html` como fallback. A branch `gh-pages` é a origem configurada na raiz do site.
-
-## SEO e acessibilidade
-- Metadata geral e conteúdo de fallback semântico permanecem em `index.html`; atualizar título/descrição ao navegar no cliente.
-- Manifesto declara todas as páginas; robots e outras URLs absolutas permanecem conservadores, sem inventar domínio canônico.
-- Links com rotas reais, menu móvel acessível, `aria-current`, foco de teclado, labels e `prefers-reduced-motion`.
-- Banner e painel de cookies com diálogo/controles rotulados, e texto direto de que opcionais não acionam terceiros.
-- Seguir a preferência por movimento reduzido e explicitar que preços, equipe, horários e reserva são demonstrações.
-
-## Verificação
-- Usar os diagnósticos TypeScript já registrados e `pnpm build`.
-- Consultar por HTTP `/`, cada rota profunda e `/manus-routes.json`; validar que o manifesto JSON enumera exatamente as rotas existentes.
-- Conferir no código consentimento, gravação/leitura do cookie, opções do usuário, links de navegação e preseleção do serviço no agendamento.
-- Inspecionar diff e push normal do branch `main` para o GitHub canônico.
-
-## Limites
-- Sem pagamentos, backend de agenda, persistência de reserva, analytics de terceiros, disparo real de WhatsApp ou envio de dados pessoais.
-- Valores, barbeiros, localização/horários e slots permanecem demonstrativos.
-
-
-## Revisão visual solicitada pelo usuário — 30/09/2026
-- A home e as páginas internas devem parecer inequivocamente uma barbearia: fotografia mais evidente, poste tricolor maior, referências visuais a navalha/tesoura/cadeira e acentos vermelho/azul/marfim junto do carvão/cobre existente.
-- Substituir a malha de caixas retangulares por composição editorial assimétrica, cards independentes de cantos arredondados, recortes em arco e fotos com formas orgânicas; manter leitura e responsividade.
-- Tornar mais visíveis as animações já previstas (entrada do hero, letreiro/poste, revelações no scroll, movimento lento das fotos e microinterações dos cards/CTAs) e respeitar `prefers-reduced-motion`.
-- Preservar as sete rotas, o menu responsivo, consentimento de cookies configurável e agenda demonstrativa sem pagamento, contato ou reserva real.
-- Usar os assets locais existentes em `public/images/`; não introduzir novos serviços externos.
-- Verificação: executar os builds existentes, validar manifesto e rotas/recursos, depois atualizar `main` e `gh-pages` apenas após integração fast-forward e checks afetados.
+## Verificação e entrega
+Verificar TypeScript/build de frontend e backend, migrações, `git diff --check`, manifesto e páginas, respostas da API e parser real do frontend. Depois de recuperar os controles WebDev: habilitar server/banco, executar migração, declarar build/container/rotas, manter `main` canônico no GitHub, publicar pelo WebDev e validar URL, health, páginas e API. Não afirmar login operacional até o Client ID ser inserido pelo fluxo protegido e as origens serem autorizadas no Google Cloud.
